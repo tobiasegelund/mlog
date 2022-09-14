@@ -1,2 +1,2 @@
 test:
-	pytest tests/
+	pytest tests/ -s

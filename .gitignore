@@ -141,4 +141,5 @@ cython_debug/
 # sublime text
 *.sublime-project
 
+*.ipynb
 TODO.md
