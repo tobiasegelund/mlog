@@ -1,6 +1,6 @@
 import time
 
-class Tracing:
+class Trace:
     def __init__(self, function) -> None:
         self.function = function
 
@@ -12,10 +12,9 @@ class Tracing:
         return result        # before function
 
 
-@Tracing
-def get_square(n):
-    print("given number is:", n)
-    return n * n
+# @Tracing
+# def get_square(n):
+#     print("given number is:", n)
+#     return n * n
 
-
-print("Square of number is:", get_square(195))
+# print("Square of number is:", get_square(195))

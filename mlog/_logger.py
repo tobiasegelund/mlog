@@ -1,12 +1,14 @@
+"""
+https://lemonfold.io/posts/2022/dbc/typed_decorator/
+"""
 # import time
 # import datetime
 import logging
 # from types import FunctionType
-from typing import Callable, Literal
+from typing import Callable, Literal, Optional
+from functools import wraps, partial
 
 from ._misc import _is_method
-# from ._tracing import Tracing
-# from ._profiling import Profiling
 
 
 class Logger:
@@ -22,14 +24,23 @@ class Logger:
         >>>
 
     """
+    level_mapping = {
+        "debug": self.debug,
+        "info": self.info,
+        "warning": self.warning,
+        "error": self.error,
+    }
+
+
     def __init__(self, format: str = "%(asctime)s | %(message)s", level = logging.INFO) -> None:
         logging.basicConfig(format=format, level=level)
         self.logger = logging.getLogger(__name__)
 
-    def add(self, key: str) -> None:
-        # Add more output files
-        # val = getattr(self, key)
-        pass
+    # TODO: Divide the log by level into multiple logs if wanted
+    # def add(self, key: str) -> None:
+    #     # Add more output files
+    #     # val = getattr(self, key)
+    #     pass
 
     # def log(self, func):
     #     if _is_method(func):
@@ -41,24 +52,38 @@ class Logger:
     #         def wrapper(*args, **kwargs):
     #             return func()
     #         return wrapper
-
     #     else:
     #         raise ValueError()
 
-    def log(self, *, mode: Literal["debug", "info"] = "debug"):
-        def wrapper(func):
-            if isinstance(func, Callable):
-                if _is_method(func):
-                    def inner(self, *args, **kwargs):
-                        return func(self)
-                    return inner
-                else:
-                    def inner(*args, **kwargs):
-                        return func()
-                    return inner
+    def log(self, func: Optional[Callable] = None,
+            *,
+            description: str = "",
+            mode: Literal["debug", "info", "warning", "error"] = "debug") -> None:
+        """TODO:
+            - Add possible options that should be appended to the log
+            - Concat combination into message
+        """
+        def wrapper(func: Callable):
+            if _is_method(func):
+                # @wraps(func)
+                def inner(self, *args, **kwargs):
+                    return func(self)
+                return inner
             else:
-                raise ValueError()
-        return wrapper
+                # @wraps(func)
+                def inner(*args, **kwargs):
+                    return func()
+                return inner
+
+        if func is not None:
+            if not callable(func):
+                raise ValueError("Not a callable. Did you use a non-keyword argument?")
+            return wraps(func)(partial(wrapper, func))
+
+        def decorator(func: Callable) -> Callable:
+            return wraps(func)(partial(wrapper, func))
+
+        return decorator
 
     def debug(self, msg: str) -> None:
         logging.debug(msg)
@@ -71,10 +96,3 @@ class Logger:
 
     def error(self, msg: str) -> None:
         logging.error(msg)
-
-    def profile(self) -> None:
-        pass
-        # activate / deactivate
-
-    def trace(self) -> None:
-        pass
