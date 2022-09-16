@@ -4,11 +4,13 @@ https://lemonfold.io/posts/2022/dbc/typed_decorator/
 # import time
 # import datetime
 import logging
+
 # from types import FunctionType
 from typing import Callable, Literal, Optional
 from functools import wraps, partial
 
 from ._misc import _is_method
+from ._exceptions import ArgumentNotCallable, ModeError
 
 
 class Logger:
@@ -24,15 +26,15 @@ class Logger:
         >>>
 
     """
-    level_mapping = {
-        "debug": self.debug,
-        "info": self.info,
-        "warning": self.warning,
-        "error": self.error,
-    }
 
+    HIDDEN_DIR = ".mlog"
 
-    def __init__(self, format: str = "%(asctime)s | %(message)s", level = logging.INFO) -> None:
+    def __init__(
+        self,
+        format: str = "%(asctime)s | %(levelname)s | %(message)s",
+        level=logging.INFO,
+    ) -> None:
+        # TODO: Update type param for level
         logging.basicConfig(format=format, level=level)
         self.logger = logging.getLogger(__name__)
 
@@ -42,57 +44,52 @@ class Logger:
     #     # val = getattr(self, key)
     #     pass
 
-    # def log(self, func):
-    #     if _is_method(func):
-    #         def wrapper(self):
-    #             return func(self)
-    #         return wrapper
-
-    #     elif isinstance(func, FunctionType):
-    #         def wrapper(*args, **kwargs):
-    #             return func()
-    #         return wrapper
-    #     else:
-    #         raise ValueError()
-
-    def log(self, func: Optional[Callable] = None,
-            *,
-            description: str = "",
-            mode: Literal["debug", "info", "warning", "error"] = "debug") -> None:
+    def log(
+        self,
+        func: Optional[Callable] = None,
+        *,
+        message: str = "",
+        monitor_input: bool = True,
+        monitor_output: bool = True,
+        mode: Literal["info", "warning", "error"] = "info",
+    ) -> Callable:
         """TODO:
-            - Add possible options that should be appended to the log
-            - Concat combination into message
+        - Add possible options that should be appended to the log
+        - Concat combination into message
+        - Add index => unique id
+        - Related to ML
+        - Event based calculations of input / output
+        - Save to hidden directory
         """
-        def wrapper(func: Callable):
+        if mode not in ("info", "warning", "error"):
+            raise ModeError(
+                f"{mode} is not a possible mode. Please choose among ['info', 'warning', 'error']"
+            )
+        log = getattr(self, mode)
+
+        def wrapper(func: Callable, *args, **kwargs):
+            log(message + str(args))
             if _is_method(func):
-                # @wraps(func)
-                def inner(self, *args, **kwargs):
-                    return func(self)
-                return inner
-            else:
-                # @wraps(func)
-                def inner(*args, **kwargs):
-                    return func()
-                return inner
+                return func(self, *args, **kwargs)
+            return func(*args, **kwargs)
 
         if func is not None:
             if not callable(func):
-                raise ValueError("Not a callable. Did you use a non-keyword argument?")
+                raise ArgumentNotCallable(
+                    "Not a callable. Did you use a non-keyword argument?"
+                )
             return wraps(func)(partial(wrapper, func))
 
-        def decorator(func: Callable) -> Callable:
+        def wrap_callable(func: Callable) -> Callable:
             return wraps(func)(partial(wrapper, func))
 
-        return decorator
-
-    def debug(self, msg: str) -> None:
-        logging.debug(msg)
+        return wrap_callable
 
     def info(self, msg: str) -> None:
-        logging.info(msg)
+        self.logger.info(msg)
 
     def warning(self, msg: str) -> None:
-        logging.warning(msg)
+        self.logger.warning(msg)
 
     def error(self, msg: str) -> None:
-        logging.error(msg)
+        self.logger.error(msg)
