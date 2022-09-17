@@ -143,5 +143,6 @@ cython_debug/
 
 *.ipynb
 TODO.md
+.mlog
 
 .vscode

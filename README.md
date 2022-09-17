@@ -1,7 +1,6 @@
 # MLog
-A library to 
+A library to log and monitor machine learning systems.
 
-A library to bring tools that can manage logging and monitoring of machine models.
-
+Compatible with Pandas DataFrames, Numpy Arrays and PyTorch Tensors
 
 https://pythonspeed.com/articles/logging-vs-profiling/

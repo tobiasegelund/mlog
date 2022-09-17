@@ -1,16 +1,11 @@
-"""
-https://lemonfold.io/posts/2022/dbc/typed_decorator/
-"""
-# import time
-# import datetime
 import logging
-
-# from types import FunctionType
-from typing import Callable, Literal, Optional
+from typing import Callable, Literal, Optional, Dict, List
 from functools import wraps, partial
 
-from ._misc import _is_method
+from ._misc import _is_method, extract_args_dict
 from ._exceptions import ArgumentNotCallable, ModeError
+from ._metrics import DataMetrics
+from ._format import marshalling_dict
 
 
 class Logger:
@@ -26,8 +21,6 @@ class Logger:
         >>>
 
     """
-
-    HIDDEN_DIR = ".mlog"
 
     def __init__(
         self,
@@ -49,8 +42,8 @@ class Logger:
         func: Optional[Callable] = None,
         *,
         message: str = "",
-        monitor_input: bool = True,
-        monitor_output: bool = True,
+        input_metrics: Optional[Dict[str, List[str]]] = None,
+        output_metrics: Optional[List[str]] = None,
         mode: Literal["info", "warning", "error"] = "info",
     ) -> Callable:
         """TODO:
@@ -60,15 +53,41 @@ class Logger:
         - Related to ML
         - Event based calculations of input / output
         - Save to hidden directory
+        - Focused around pandas dataframe / Pytorch / Numpy array => Standard lib in ML
         """
         if mode not in ("info", "warning", "error"):
             raise ModeError(
                 f"{mode} is not a possible mode. Please choose among ['info', 'warning', 'error']"
             )
         log = getattr(self, mode)
+        if len(message) > 0:
+            log(message)
 
         def wrapper(func: Callable, *args, **kwargs):
-            log(message + str(args))
+            args_mapping = extract_args_dict(func, *args, **kwargs)
+            print(args_mapping)
+
+            if input_metrics is not None:
+                for key, metrics in input_metrics.items():
+                    input = args_mapping.get(key, None)
+                    if input is None:
+                        self.warning(f"{key} is not an optional argument")
+                        continue
+
+                    output_metrics = f"{key}: "
+                    d = dict()
+                    for metric in metrics:
+                        out = getattr(DataMetrics, metric)(input)
+                        d[metric] = round(out, 2)
+                        # output_metrics += f"{metric}={out: .1f}, "
+                    d = marshalling_dict(d)
+                    log(output_metrics + d)
+
+            # input = self._concat_msg(*args, **kwargs)
+            # if len(input) > 0:
+            #     log(input)
+            # log(mean)
+
             if _is_method(func):
                 return func(self, *args, **kwargs)
             return func(*args, **kwargs)
@@ -84,6 +103,15 @@ class Logger:
             return wraps(func)(partial(wrapper, func))
 
         return wrap_callable
+
+    def _concat_msg(self, *args, **kwargs) -> str:
+        msg = ""
+        if len(args) > 0:
+            msg += "args=" + str(args)
+        if len(kwargs) > 0:
+            msg += "| kwargs=" + str(kwargs)
+
+        return msg
 
     def info(self, msg: str) -> None:
         self.logger.info(msg)
