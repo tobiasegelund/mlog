@@ -51,9 +51,9 @@ class Logger:
         - Concat combination into message
         - Add index => unique id
         - Related to ML
-        - Event based calculations of input / output
+        - Event based calculations of inp / output
         - Save to hidden directory
-        - Focused around pandas dataframe / Pytorch / Numpy array => Standard lib in ML
+        - Focused around pandas dataframe / Pytorch Tensor / Numpy array => Standard lib in ML
         """
         if mode not in ("info", "warning", "error"):
             raise ModeError(
@@ -69,24 +69,18 @@ class Logger:
 
             if input_metrics is not None:
                 for key, metrics in input_metrics.items():
-                    input = args_mapping.get(key, None)
-                    if input is None:
+                    inp = args_mapping.get(key, None)
+                    if inp is None:
                         self.warning(f"{key} is not an optional argument")
                         continue
 
                     output_metrics = f"{key}: "
                     d = dict()
                     for metric in metrics:
-                        out = getattr(DataMetrics, metric)(input)
+                        out = getattr(DataMetrics, metric)(inp)
                         d[metric] = round(out, 2)
-                        # output_metrics += f"{metric}={out: .1f}, "
                     d = marshalling_dict(d)
                     log(output_metrics + d)
-
-            # input = self._concat_msg(*args, **kwargs)
-            # if len(input) > 0:
-            #     log(input)
-            # log(mean)
 
             if _is_method(func):
                 return func(self, *args, **kwargs)

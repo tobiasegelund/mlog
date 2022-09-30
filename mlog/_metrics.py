@@ -2,17 +2,24 @@
 Definition of possible metrics to check for, including common SWE KPIs and ML KPIs
 """
 import time
-from typing import Any
+from typing import Any, Callable
 
 import numpy as np
+
+from ._misc import _is_method
 
 # import pandas as pd
 
 
 class MonitorMetrics:
     @classmethod
-    def execution_time(cls):
-        pass
+    def execution_time(cls, func: Callable) -> Callable:
+        def wrapper(*args, **kwargs):
+            start_time = time.time()
+            return func(*args, **kwargs)
+            end_time = time.time()
+            print(end_time - start_time)
+        return wrapper
 
     @classmethod
     def latency(cls):

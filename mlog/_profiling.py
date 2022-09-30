@@ -1,8 +1,9 @@
 from typing import Callable, Optional
-from functools import wraps
+from functools import wraps, partial
 
-from ._metrics import latency
+from ._metrics import MonitorMetrics
 from ._misc import _is_method
+from ._exceptions import ArgumentNotCallable
 
 
 def profiling(
@@ -13,21 +14,20 @@ def profiling(
     gpu_usage: bool = True,
     throughput: bool = False,
 ):
-    def wrapper(func):
-        if callable(func):
-            if _is_method(func):
+    def wrapper(func: Callable, *args, **kwargs):
+        if execution_time:
+        # if _is_method(func):
+        #     return func(self, *args, **kwargs)
+        return func(*args, **kwargs)
 
-                @wraps(func)
-                def inner(self, *args, **kwargs):
-                    func(self)
+    if func is not None:
+        if not callable(func):
+            raise ArgumentNotCallable(
+                "Not a callable. Did you use a non-keyword argument?"
+            )
+        return wraps(func)(partial(wrapper, func))
 
-                return inner
-            else:
+    def wrap_callable(func: Callable) -> Callable:
+        return wraps(func)(partial(wrapper, func))
 
-                @wraps(func)
-                def inner(*args, **kwargs):
-                    func()
-
-                return inner
-
-    return wrapper
+    return wrap_callable
