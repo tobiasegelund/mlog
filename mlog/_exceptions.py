@@ -2,5 +2,9 @@ class ArgumentNotCallable(Exception):
     pass
 
 
-class ModeError(Exception):
+class LevelError(Exception):
+    pass
+
+
+class InputFormatError(Exception):
     pass

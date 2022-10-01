@@ -1,9 +1,12 @@
 import logging
-from typing import Callable, Literal, Optional, Dict, List
+from typing import Callable, Literal, Optional, Dict, List, Any
 from functools import wraps, partial
 
-from ._misc import _is_method, extract_args_dict
-from ._exceptions import ArgumentNotCallable, ModeError
+import pandas as pd
+import numpy as np
+
+from ._misc import _is_method, map_args
+from ._exceptions import ArgumentNotCallable, LevelError, InputFormatError
 from ._metrics import DataMetrics
 from ._format import marshalling_dict
 
@@ -26,6 +29,7 @@ class Logger:
         self,
         format: str = "%(asctime)s | %(levelname)s | %(message)s",
         level=logging.INFO,
+        # environment: str = "development",
     ) -> None:
         # TODO: Update type param for level
         logging.basicConfig(format=format, level=level)
@@ -41,50 +45,65 @@ class Logger:
         self,
         func: Optional[Callable] = None,
         *,
-        message: str = "",
         input_metrics: Optional[Dict[str, List[str]]] = None,
         output_metrics: Optional[List[str]] = None,
-        mode: Literal["info", "warning", "error"] = "info",
+        threholds: Optional[Dict[str, List[float]]] = None,
     ) -> Callable:
         """TODO:
         - Add possible options that should be appended to the log
         - Concat combination into message
-        - Add index => unique id
+        - Thresholds
+        - Add index => unique id => function / method name
         - Related to ML
-        - Event based calculations of inp / output
+        - Event based calculations of inp / output => Index
         - Save to hidden directory
+        - Thresholds / Quality assurance => N and Quantiles (within which range)
+        - Apply sensitivity analysis? => Like add 1e4 +- to some specified
         - Focused around pandas dataframe / Pytorch Tensor / Numpy array => Standard lib in ML
         """
-        if mode not in ("info", "warning", "error"):
-            raise ModeError(
-                f"{mode} is not a possible mode. Please choose among ['info', 'warning', 'error']"
-            )
-        log = getattr(self, mode)
-        if len(message) > 0:
-            log(message)
+        log = getattr(self, "info")
+        # log_warning = getattr(self, "warning")
 
         def wrapper(func: Callable, *args, **kwargs):
-            args_mapping = extract_args_dict(func, *args, **kwargs)
-            print(args_mapping)
+            kwargs_mapping = map_args(func, *args, **kwargs)
 
             if input_metrics is not None:
-                for key, metrics in input_metrics.items():
-                    inp = args_mapping.get(key, None)
-                    if inp is None:
-                        self.warning(f"{key} is not an optional argument")
-                        continue
+                if isinstance(input_metrics, dict):
+                    for kw, metrics in input_metrics.items():
+                        data = kwargs_mapping.get(kw, None)
+                        if data is None:
+                            continue
 
-                    output_metrics = f"{key}: "
-                    d = dict()
-                    for metric in metrics:
-                        out = getattr(DataMetrics, metric)(inp)
-                        d[metric] = round(out, 2)
-                    d = marshalling_dict(d)
-                    log(output_metrics + d)
+                        if not (
+                            isinstance(data, pd.DataFrame)
+                            or isinstance(data, np.ndarray)
+                            or isinstance(data, list)
+                        ):
+                            raise ValueError(
+                                f"{kw} must be a list, DataFrame or Numpy ndarray"
+                            )
+                        # Map of feat values
+                        input_str = f"{func} | {kw}: "
+                        input_metric_dict = dict()
+                        for metric in metrics:
+                            out = getattr(DataMetrics, metric)(data)
+                            input_metric_dict[metric] = out
+                        input_metric_dict = marshalling_dict(input_metric_dict)
+                        log(input_str + input_metric_dict)
+
+                else:
+                    raise InputFormatError(
+                        "The input metrics must be defined as a dictionary, where the key refers to the features"
+                    )
 
             if _is_method(func):
-                return func(self, *args, **kwargs)
-            return func(*args, **kwargs)
+                result = func(self, *args, **kwargs)
+            else:
+                result = func(*args, **kwargs)
+
+            # TODO: Measure output
+
+            return result
 
         if func is not None:
             if not callable(func):
@@ -97,15 +116,6 @@ class Logger:
             return wraps(func)(partial(wrapper, func))
 
         return wrap_callable
-
-    def _concat_msg(self, *args, **kwargs) -> str:
-        msg = ""
-        if len(args) > 0:
-            msg += "args=" + str(args)
-        if len(kwargs) > 0:
-            msg += "| kwargs=" + str(kwargs)
-
-        return msg
 
     def info(self, msg: str) -> None:
         self.logger.info(msg)

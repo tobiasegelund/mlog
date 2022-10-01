@@ -16,6 +16,7 @@ def profiling(
 ):
     def wrapper(func: Callable, *args, **kwargs):
         if execution_time:
+            pass
         # if _is_method(func):
         #     return func(self, *args, **kwargs)
         return func(*args, **kwargs)
