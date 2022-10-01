@@ -2,7 +2,7 @@
 Definition of possible metrics to check for, including common SWE KPIs and ML KPIs
 """
 import time
-from typing import Any, Callable, List, Union
+from typing import Any, Callable, List, Union, Tuple
 
 import numpy as np
 
@@ -14,13 +14,13 @@ import numpy as np
 
 class MonitorMetrics:
     @classmethod
-    def execution_time(cls, func: Callable) -> Callable:
+    def execution_time(cls, func: Callable) -> Tuple[Callable, float]:
         def wrapper(*args, **kwargs):
             start_time = time.time()
             result = func(*args, **kwargs)
             end_time = time.time()
             print(end_time - start_time)
-            return result
+            return (result, time)
 
         return wrapper
 
@@ -34,6 +34,10 @@ class MonitorMetrics:
 
     @classmethod
     def gpu_usage(cls):
+        pass
+
+    @classmethod
+    def memory_usage(cls):
         pass
 
     @classmethod

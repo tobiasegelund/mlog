@@ -1,3 +1,4 @@
+import time
 import logging
 from typing import Callable, Literal, Optional, Dict, List, Any
 from functools import wraps, partial
@@ -48,6 +49,10 @@ class Logger:
         input_metrics: Optional[Dict[str, List[str]]] = None,
         output_metrics: Optional[List[str]] = None,
         threholds: Optional[Dict[str, List[float]]] = None,
+        execution_time: bool = False,  # Specify format?
+        cpu_usage: bool = False,
+        gpu_usage: bool = False,
+        memory_usage: bool = False,
     ) -> Callable:
         """TODO:
         - Add possible options that should be appended to the log
@@ -61,6 +66,7 @@ class Logger:
         - Apply sensitivity analysis? => Like add 1e4 +- to some specified
         - Focused around pandas dataframe / Pytorch Tensor / Numpy array => Standard lib in ML
         """
+        start_time = time.time()
         log = getattr(self, "info")
         # log_warning = getattr(self, "warning")
 
@@ -69,6 +75,7 @@ class Logger:
 
             if input_metrics is not None:
                 if isinstance(input_metrics, dict):
+                    log_str = f"{func} | "
                     for kw, metrics in input_metrics.items():
                         data = kwargs_mapping.get(kw, None)
                         if data is None:
@@ -82,24 +89,41 @@ class Logger:
                             raise ValueError(
                                 f"{kw} must be a list, DataFrame or Numpy ndarray"
                             )
-                        # Map of feat values
-                        input_str = f"{func} | {kw}: "
+                        # TODO: Map of feat values
+                        log_str += f"{kw}: "
                         input_metric_dict = dict()
                         for metric in metrics:
                             out = getattr(DataMetrics, metric)(data)
                             input_metric_dict[metric] = out
+                        # TODO: Save input metric dict
                         input_metric_dict = marshalling_dict(input_metric_dict)
-                        log(input_str + input_metric_dict)
+                        log_str += input_metric_dict
+                        log(log_str)
 
                 else:
                     raise InputFormatError(
                         "The input metrics must be defined as a dictionary, where the key refers to the features"
                     )
 
+            # TODO:
+            # Load and analyze the input here => Any data shifts or outliers?
+
+            log_str = f"{func} | "
+            profiling_dict = {}
+
+            if memory_usage is True:
+                pass
+
             if _is_method(func):
                 result = func(self, *args, **kwargs)
             else:
                 result = func(*args, **kwargs)
+
+            if execution_time is True:
+                end_time = time.time()
+                profiling_dict["execution_time"] = end_time - start_time
+
+            log(log_str)
 
             # TODO: Measure output
 
