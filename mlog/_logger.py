@@ -1,4 +1,4 @@
-import time
+import datetime
 import logging
 from typing import Callable, Literal, Optional, Dict, List, Any
 from functools import wraps, partial
@@ -65,17 +65,19 @@ class Logger:
         - Thresholds / Quality assurance => N and Quantiles (within which range)
         - Apply sensitivity analysis? => Like add 1e4 +- to some specified
         - Focused around pandas dataframe / Pytorch Tensor / Numpy array => Standard lib in ML
+        - Allow user-defined functions
         """
-        start_time = time.time()
+        start_time = datetime.datetime.now()
         log = getattr(self, "info")
         # log_warning = getattr(self, "warning")
+        # log_error = getattr(self, "error")
 
         def wrapper(func: Callable, *args, **kwargs):
             kwargs_mapping = map_args(func, *args, **kwargs)
 
             if input_metrics is not None:
                 if isinstance(input_metrics, dict):
-                    log_str = f"{func} | "
+                    log_str = f"{func.__qualname__} | "
                     for kw, metrics in input_metrics.items():
                         data = kwargs_mapping.get(kw, None)
                         if data is None:
@@ -93,11 +95,14 @@ class Logger:
                         log_str += f"{kw}: "
                         input_metric_dict = dict()
                         for metric in metrics:
-                            out = getattr(DataMetrics, metric)(data)
-                            input_metric_dict[metric] = out
+                            try:
+                                out = getattr(DataMetrics, metric)(data)
+                                input_metric_dict[metric] = out
+                            except AttributeError:
+                                raise ValueError(f"{metric} is not a possible metric")
                         # TODO: Save input metric dict
-                        input_metric_dict = marshalling_dict(input_metric_dict)
-                        log_str += input_metric_dict
+                        # input_metric_dict = marshalling_dict(input_metric_dict)
+                        log_str += str(input_metric_dict)
                         log(log_str)
 
                 else:
@@ -108,7 +113,7 @@ class Logger:
             # TODO:
             # Load and analyze the input here => Any data shifts or outliers?
 
-            log_str = f"{func} | "
+            log_str = f"{func.__qualname__} | "
             profiling_dict = {}
 
             if memory_usage is True:
@@ -120,10 +125,11 @@ class Logger:
                 result = func(*args, **kwargs)
 
             if execution_time is True:
-                end_time = time.time()
-                profiling_dict["execution_time"] = end_time - start_time
+                end_time = datetime.datetime.now()
+                profiling_dict["execution_time"] = str(end_time - start_time)  # seconds
 
-            log(log_str)
+            profiling_dict = marshalling_dict(profiling_dict)
+            log(log_str + profiling_dict)
 
             # TODO: Measure output
 

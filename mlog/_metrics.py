@@ -1,54 +1,32 @@
 """
 Definition of possible metrics to check for, including common SWE KPIs and ML KPIs
 """
-import time
-from typing import Any, Callable, List, Union, Tuple
+from typing import Any
 
 import numpy as np
-
-from ._misc import _is_method
 
 import pandas as pd
 import numpy as np
-
-
-class MonitorMetrics:
-    @classmethod
-    def execution_time(cls, func: Callable) -> Tuple[Callable, float]:
-        def wrapper(*args, **kwargs):
-            start_time = time.time()
-            result = func(*args, **kwargs)
-            end_time = time.time()
-            print(end_time - start_time)
-            return (result, time)
-
-        return wrapper
-
-    @classmethod
-    def latency(cls):
-        pass
-
-    @classmethod
-    def cpu_usage(cls):
-        pass
-
-    @classmethod
-    def gpu_usage(cls):
-        pass
-
-    @classmethod
-    def memory_usage(cls):
-        pass
-
-    @classmethod
-    def throughput(cls):
-        pass
 
 
 class DataMetrics:
     @classmethod
     def size(cls, X: Any):
         return len(X)
+
+    @classmethod
+    def duplicates(cls, X: Any):
+        if isinstance(X, pd.DataFrame):
+            return int(X.duplicated().sum())
+
+        if isinstance(X, np.ndarray):
+            return int(len(X) - len(np.unique(X, axis=0)))
+
+        elif isinstance(X, list):
+            return int(len(X) - len(set(X)))
+
+        else:
+            raise ValueError()
 
     @classmethod
     def nans(cls, X: Any):
@@ -74,6 +52,18 @@ class DataMetrics:
 
         elif isinstance(X, list):
             return np.mean(X)
+
+        else:
+            raise ValueError()
+
+    @classmethod
+    def percentile1(cls, X):
+        q = 1
+        if isinstance(X, np.ndarray) or isinstance(X, pd.DataFrame):
+            return list(np.percentile(X, q=q, axis=0))
+
+        elif isinstance(X, list):
+            return np.percentile(X, q=q)
 
         else:
             raise ValueError()
@@ -129,6 +119,18 @@ class DataMetrics:
     @classmethod
     def percentile95(cls, X):
         q = 95
+        if isinstance(X, np.ndarray) or isinstance(X, pd.DataFrame):
+            return list(np.percentile(X, q=q, axis=0))
+
+        elif isinstance(X, list):
+            return np.percentile(X, q=q)
+
+        else:
+            raise ValueError()
+
+    @classmethod
+    def percentile99(cls, X):
+        q = 99
         if isinstance(X, np.ndarray) or isinstance(X, pd.DataFrame):
             return list(np.percentile(X, q=q, axis=0))
 
