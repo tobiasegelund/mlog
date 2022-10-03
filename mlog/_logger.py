@@ -1,15 +1,5 @@
-import datetime
 import logging
-from typing import Callable, Literal, Optional, Dict, List, Any, Union
-from functools import wraps, partial
 
-import pandas as pd
-import numpy as np
-
-from ._misc import _is_method, map_args
-from ._exceptions import ArgumentNotCallable, LevelError, InputFormatError
-from ._metrics import DataMetrics
-from ._format import marshalling_dict
 from ._states import LogInput, LogOutput, LogProfile
 
 
@@ -24,6 +14,8 @@ class Logger:
     Usage:
         >>>
         >>>
+
+    Typestates: logger.profile.log(), logger.ml.log(), logger.data.log()
 
     """
 

@@ -35,14 +35,12 @@ class LogProfile:
         - Add possible options that should be appended to the log
         - Thresholds
         - Add index => unique id => function / method name
-        - Related to ML
         - Event based calculations of inp / output => Index
         - Save to hidden directory
         - Thresholds / Quality assurance => N and Quantiles (within which range)
         - Apply sensitivity analysis? => Like add 1e4 +- to some specified
         - Focused around pandas dataframe / Pytorch Tensor / Numpy array => Standard lib in ML
         - Change all future exceptions with warnings instead
-        - Refractor to typestates design => e.g. logger.profile.log(), logger.ml.log(), logger.data.log()
         """
         start_time = datetime.datetime.now()
         log = getattr(self._parent, "info")
@@ -50,7 +48,7 @@ class LogProfile:
         # log_error = getattr(self._parent, "error")
 
         def wrapper(func: Callable, *args, **kwargs):
-            log_str = f"{func.__qualname__} | "
+            log_str = f"{func.__qualname__} | PROFILING | "
             profiling_dict = {}
 
             if memory_usage is True:
@@ -96,7 +94,6 @@ class LogInput:
         metrics: Optional[Dict[str, List[Union[str, Callable]]]] = None,
         threholds: Optional[Dict[str, List[float]]] = None,
     ) -> Callable:
-        start_time = datetime.datetime.now()
         log = getattr(self._parent, "info")
         # log_warning = getattr(self._parent, "warning")
         # log_error = getattr(self._parent, "error")
@@ -106,7 +103,7 @@ class LogInput:
 
             if metrics is not None:
                 if isinstance(metrics, dict):
-                    log_str = f"{func.__qualname__} | "
+                    log_str = f"{func.__qualname__} | INPUT | "
                     for kw, _metrics in metrics.items():
                         data = kwargs_mapping.get(kw, None)
                         if data is None:
@@ -187,7 +184,7 @@ class LogOutput:
             # Load and analyze the input here => Any data shifts or outliers?
             # TODO: Measure output
 
-            log_str = f"{func.__qualname__} | "
+            log_str = f"{func.__qualname__} | OUTPUT |"
 
             if _is_method(func):
                 result = func(self, *args, **kwargs)
