@@ -1,4 +1,4 @@
-from mlog._misc import map_args
+from mlog._utils import map_args
 
 
 def test_map_args():

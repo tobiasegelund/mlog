@@ -1,4 +1,4 @@
 from ._logger import Logger
-from ._misc import _settings
+from ._utils import _settings
 
 _settings()

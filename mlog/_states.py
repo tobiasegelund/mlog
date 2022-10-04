@@ -7,7 +7,7 @@ from functools import wraps, partial
 import pandas as pd
 import numpy as np
 
-from ._misc import is_method, map_args
+from ._utils import is_method, map_args
 from ._exceptions import ArgumentNotCallable, InputFormatError
 from ._metrics import DataMetrics
 from ._format import marshalling_dict, convert_bytes_to_gb, convert_bytes_to_mb
