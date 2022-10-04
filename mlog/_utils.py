@@ -29,5 +29,9 @@ def hash_name(name: str) -> str:
     return hashlib.md5(name.encode("utf-8")).hexdigest()
 
 
+def collect_path_to_callable(func: Callable) -> str:
+    return inspect.getfile(func)
+
+
 def _settings():
     create_dir_if_not_exists(HIDDEN_DIR)

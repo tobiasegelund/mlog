@@ -7,13 +7,17 @@ from functools import wraps, partial
 import pandas as pd
 import numpy as np
 
-from ._utils import is_method, map_args
+from ._utils import is_method, map_args, collect_path_to_callable, hash_name
 from ._exceptions import ArgumentNotCallable, InputFormatError
 from ._metrics import DataMetrics
-from ._format import marshalling_dict, convert_bytes_to_gb, convert_bytes_to_mb
+from ._format import convert_bytes_to_gb, convert_bytes_to_mb
 
 
 class LogState(ABC):
+    def _collect_and_hash_filepath(self, func: Callable) -> str:
+        path = collect_path_to_callable(func)
+        return hash_name(path)
+
     @abstractmethod
     def log(self) -> Callable:
         pass
@@ -34,7 +38,6 @@ class LogProfile:
     ) -> Callable:
         """TODO:
         - Add possible options that should be appended to the log
-        - Thresholds
         - Add index => unique id => function / method name
         - Event based calculations of inp / output => Index
         - Save to hidden directory
@@ -44,7 +47,7 @@ class LogProfile:
         - Change all future exceptions with warnings instead
         """
         start_time = datetime.datetime.now()
-        log = getattr(self._parent, "info")
+        log_info = getattr(self._parent, "info")
         # log_warning = getattr(self._parent, "warning")
         # log_error = getattr(self._parent, "error")
 
@@ -55,7 +58,7 @@ class LogProfile:
             log_str = f"{func.__qualname__} | PROFILING | "
             if memory_usage is True:
                 total = 0
-                for kw, data in kwargs_mapping.items():
+                for data in kwargs_mapping.values():
                     total += sys.getsizeof(data)
 
                 profiling_dict["memory_usage"] = convert_bytes_to_mb(total)
@@ -70,7 +73,7 @@ class LogProfile:
                 profiling_dict["execution_time"] = str(end_time - start_time)  # seconds
 
             # profiling_dict = marshalling_dict(profiling_dict)
-            log(log_str + str(profiling_dict))
+            log_info(log_str + str(profiling_dict))
 
             # TODO: Measure output
 
@@ -111,7 +114,7 @@ class LogInput:
         metrics: Optional[Dict[str, List[Union[str, Callable]]]] = None,
         threholds: Optional[Dict[str, List[float]]] = None,
     ) -> Callable:
-        log = getattr(self._parent, "info")
+        log_info = getattr(self._parent, "info")
         # log_warning = getattr(self._parent, "warning")
         # log_error = getattr(self._parent, "error")
 
@@ -154,7 +157,7 @@ class LogInput:
                         # TODO: Save input metric dict
                         # input_metric_dict = marshalling_dict(input_metric_dict)
                         log_str += str(input_metric_dict)
-                        log(log_str)
+                        log_info(log_str)
 
                 else:
                     raise InputFormatError(
@@ -197,7 +200,7 @@ class LogOutput:
         Load and analyze the input here => Any data shifts or outliers?
         """
 
-        log = getattr(self._parent, "info")
+        log_info = getattr(self._parent, "info")
         # log_warning = getattr(self._parent, "warning")
         # log_error = getattr(self._parent, "error")
 
@@ -223,7 +226,7 @@ class LogOutput:
 
                     output_dict[metric] = out
 
-                log(log_str + str(output_dict))
+                log_info(log_str + str(output_dict))
 
             return result
 
