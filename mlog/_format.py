@@ -12,3 +12,11 @@ def marshalling_kwargs(**kwargs) -> str:
 
 def marshalling_dict(dictionary: Dict[Any, Any]) -> str:
     return json.dumps(dictionary)
+
+
+def convert_bytes_to_mb(bytes: int) -> float:
+    return bytes * 10**-6
+
+
+def convert_bytes_to_gb(bytes: int) -> float:
+    return bytes * 10**-9

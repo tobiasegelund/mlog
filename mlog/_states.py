@@ -1,15 +1,16 @@
+import sys
 import datetime
 from abc import abstractmethod, ABC
-from typing import Callable, Literal, Optional, Dict, List, Any, Union
+from typing import Callable, Optional, Dict, List, Union, Tuple
 from functools import wraps, partial
 
 import pandas as pd
 import numpy as np
 
-from ._misc import _is_method, map_args
-from ._exceptions import ArgumentNotCallable, LevelError, InputFormatError
+from ._misc import is_method, map_args
+from ._exceptions import ArgumentNotCallable, InputFormatError
 from ._metrics import DataMetrics
-from ._format import marshalling_dict
+from ._format import marshalling_dict, convert_bytes_to_gb, convert_bytes_to_mb
 
 
 class LogState(ABC):
@@ -48,13 +49,18 @@ class LogProfile:
         # log_error = getattr(self._parent, "error")
 
         def wrapper(func: Callable, *args, **kwargs):
-            log_str = f"{func.__qualname__} | PROFILING | "
+            kwargs_mapping = map_args(func, *args, **kwargs)
             profiling_dict = {}
 
+            log_str = f"{func.__qualname__} | PROFILING | "
             if memory_usage is True:
-                pass
+                total = 0
+                for kw, data in kwargs_mapping.items():
+                    total += sys.getsizeof(data)
 
-            if _is_method(func):
+                profiling_dict["memory_usage"] = convert_bytes_to_mb(total)
+
+            if is_method(func):
                 result = func(self, *args, **kwargs)
             else:
                 result = func(*args, **kwargs)
@@ -84,6 +90,17 @@ class LogProfile:
 
 
 class LogInput:
+    """
+    TODO:
+    Data quality:
+        - Validate data types
+        - Checking schemas (Correct naming, correct order) => Insert prefined schema (e.g. dataframe feature names)
+        - Syntax errors
+
+        - Add mode, standard deviation, variance, frequency
+        - Aggregates as sum, count, and
+    """
+
     def __init__(self, _parent) -> None:
         self._parent = _parent
 
@@ -144,7 +161,7 @@ class LogInput:
                         "The input metrics must be defined as a dictionary, where the key refers to the features"
                     )
 
-            if _is_method(func):
+            if is_method(func):
                 result = func(self, *args, **kwargs)
             else:
                 result = func(*args, **kwargs)
@@ -172,24 +189,41 @@ class LogOutput:
         self,
         func: Optional[Callable] = None,
         *,
-        metrics: Optional[List[str]] = None,
-        threholds: Optional[Dict[str, List[float]]] = None,
+        metrics: Optional[List[Union[str, Callable]]] = None,
+        threholds: Optional[Dict[str, Union[Tuple[float], List[float]]]] = None,
     ) -> Callable:
+        """
+        Apply certain thresholds to meet downstream criterias
+        Load and analyze the input here => Any data shifts or outliers?
+        """
+
         log = getattr(self._parent, "info")
         # log_warning = getattr(self._parent, "warning")
         # log_error = getattr(self._parent, "error")
 
         def wrapper(func: Callable, *args, **kwargs):
-            # TODO:
-            # Load and analyze the input here => Any data shifts or outliers?
-            # TODO: Measure output
-
             log_str = f"{func.__qualname__} | OUTPUT |"
+            output_dict = {}
 
-            if _is_method(func):
+            if is_method(func):
                 result = func(self, *args, **kwargs)
             else:
                 result = func(*args, **kwargs)
+            if metrics is not None:
+                for metric in metrics:
+                    if callable(metric):
+                        out = metric(result)
+                    else:
+                        try:
+                            out = getattr(DataMetrics, metric)(result)
+                        except AttributeError:
+                            raise ValueError(
+                                f"{metric} is not available among the options"
+                            )
+
+                    output_dict[metric] = out
+
+                log(log_str + str(output_dict))
 
             return result
 

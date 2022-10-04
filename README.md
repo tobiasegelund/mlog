@@ -5,6 +5,8 @@ The purpose of the library is to easily control and observe any data shift, as w
 
 Remove boilerplate logging code to monitor input and output of a machine learning pipeline.
 
+Off the shelf logging tool for your own ML models at home. It can easily be extended with database connections if needed
+
 ## Under construction
 
 The logging is focused on batch predictions, ie. the logging is not ideal for real-time predictions.

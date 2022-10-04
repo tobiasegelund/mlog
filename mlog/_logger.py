@@ -1,5 +1,6 @@
 import logging
 
+from ._os import find_hidden_mlog_dir
 from ._states import LogInput, LogOutput, LogProfile
 
 
@@ -17,7 +18,11 @@ class Logger:
 
     Typestates: logger.profile.log(), logger.ml.log(), logger.data.log()
 
+    # What to do if we observe the same name twice? Link it based on the script it is found in?
+
     """
+
+    _hidden_dir = find_hidden_mlog_dir()
 
     def __init__(
         self,
@@ -40,6 +45,10 @@ class Logger:
     #     # Add more output files
     #     # val = getattr(self, key)
     #     pass
+
+    def _load_cache(self) -> None:
+        # Load mapping of files and functions => UUID
+        pass
 
     @property
     def profile(self) -> LogProfile:

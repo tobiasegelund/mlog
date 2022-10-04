@@ -1,8 +1,12 @@
 import inspect
 from typing import Dict, Any, Callable
 
+from ._os import create_dir_if_not_exists
 
-def _is_method(func: Callable):
+HIDDEN_DIR = ".mlog"
+
+
+def is_method(func: Callable):
     spec = inspect.signature(func)
     if len(spec.parameters) > 0:
         if list(spec.parameters.keys())[0] in ("cls", "self"):
@@ -18,3 +22,7 @@ def map_args(func: Callable, *args, **kwargs) -> Dict[str, Any]:
         func_args = func_args[1:]
     args_length = len(args)
     return dict(zip(func_args[:args_length], args), **kwargs)
+
+
+def _settings():
+    create_dir_if_not_exists(HIDDEN_DIR)

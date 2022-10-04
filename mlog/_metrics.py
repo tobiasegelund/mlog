@@ -11,8 +11,22 @@ import numpy as np
 
 class DataMetrics:
     @classmethod
-    def size(cls, X: Any):
+    def count(cls, X: Any):
         return len(X)
+
+    # @classmethod
+    # def mode(cls, X: Any):
+    #     if isinstance(X, pd.DataFrame):
+    #         return X.mode().tolist()
+
+    #     if isinstance(X, np.ndarray):
+    #         return list(np.mode(X).sum(axis=0))
+
+    #     elif isinstance(X, list):
+    #         return np.mode(X).sum()
+
+    #     else:
+    #         raise ValueError()
 
     @classmethod
     def duplicates(cls, X: Any):
