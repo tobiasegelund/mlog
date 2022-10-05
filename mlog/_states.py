@@ -1,23 +1,19 @@
 import sys
 import datetime
 from abc import abstractmethod, ABC
-from typing import Callable, Optional, Dict, List, Union, Tuple
+from typing import Callable, Optional, Dict, List, Union, Tuple, Any
 from functools import wraps, partial
 
 import pandas as pd
 import numpy as np
 
-from ._utils import is_method, map_args, collect_path_to_callable, hash_name
+from ._utils import is_method, map_args
 from ._exceptions import ArgumentNotCallable, InputFormatError
 from ._metrics import DataMetrics
 from ._format import convert_bytes_to_gb, convert_bytes_to_mb
 
 
 class LogState(ABC):
-    def _collect_and_hash_filepath(self, func: Callable) -> str:
-        path = collect_path_to_callable(func)
-        return hash_name(path)
-
     @abstractmethod
     def log(self) -> Callable:
         pass
@@ -32,8 +28,6 @@ class LogProfile:
         func: Optional[Callable] = None,
         *,
         execution_time: bool = False,  # Specify format?
-        cpu_usage: bool = False,
-        gpu_usage: bool = False,
         memory_usage: bool = False,
     ) -> Callable:
         """TODO:
@@ -47,9 +41,7 @@ class LogProfile:
         - Change all future exceptions with warnings instead
         """
         start_time = datetime.datetime.now()
-        log_info = getattr(self._parent, "info")
-        # log_warning = getattr(self._parent, "warning")
-        # log_error = getattr(self._parent, "error")
+        log = getattr(self._parent, "info")
 
         def wrapper(func: Callable, *args, **kwargs):
             kwargs_mapping = map_args(func, *args, **kwargs)
@@ -73,7 +65,7 @@ class LogProfile:
                 profiling_dict["execution_time"] = str(end_time - start_time)  # seconds
 
             # profiling_dict = marshalling_dict(profiling_dict)
-            log_info(log_str + str(profiling_dict))
+            log(log_str + str(profiling_dict))
 
             # TODO: Measure output
 
@@ -112,11 +104,26 @@ class LogInput:
         func: Optional[Callable] = None,
         *,
         metrics: Optional[Dict[str, List[Union[str, Callable]]]] = None,
-        threholds: Optional[Dict[str, List[float]]] = None,
     ) -> Callable:
-        log_info = getattr(self._parent, "info")
-        # log_warning = getattr(self._parent, "warning")
-        # log_error = getattr(self._parent, "error")
+        """
+        metrics={
+            "df": ["mean"]
+        }
+
+        metrics={
+            "df": {
+                "feat1": [4, 6, "error"]
+            }
+        }
+
+        metrics={
+            "X": {
+                0: [4.2, 6.3, "warning"]
+            }
+        }
+        """
+
+        log = getattr(self._parent, "info")
 
         def wrapper(func: Callable, *args, **kwargs):
             kwargs_mapping = map_args(func, *args, **kwargs)
@@ -157,7 +164,7 @@ class LogInput:
                         # TODO: Save input metric dict
                         # input_metric_dict = marshalling_dict(input_metric_dict)
                         log_str += str(input_metric_dict)
-                        log_info(log_str)
+                        log(log_str)
 
                 else:
                     raise InputFormatError(
@@ -165,11 +172,8 @@ class LogInput:
                     )
 
             if is_method(func):
-                result = func(self, *args, **kwargs)
-            else:
-                result = func(*args, **kwargs)
-
-            return result
+                return func(self, *args, **kwargs)
+            return func(*args, **kwargs)
 
         if func is not None:
             if not callable(func):
@@ -188,21 +192,39 @@ class LogOutput:
     def __init__(self, _parent) -> None:
         self._parent = _parent
 
+    def _calculate_metric(self, result: Any, metric: Union[Callable, str]) -> float:
+        if callable(metric):
+            out = metric(result)
+        else:
+            try:
+                out = getattr(DataMetrics, metric)(result)
+            except AttributeError:
+                raise ValueError(f"{metric} is not available among the options")
+
+        return out
+
     def log(
         self,
         func: Optional[Callable] = None,
         *,
-        metrics: Optional[List[Union[str, Callable]]] = None,
-        threholds: Optional[Dict[str, Union[Tuple[float], List[float]]]] = None,
+        metrics: Optional[
+            Union[Dict[str, Union[Tuple[Any, Any, Any], List[Any]]], List[Any]]
+        ] = None,
     ) -> Callable:
         """
         Apply certain thresholds to meet downstream criterias
         Load and analyze the input here => Any data shifts or outliers?
+
+        metrics={
+            "mean": (0.5, 0.8, "warning),
+            "percentile10": None,
+        }
+
+        metrics=["mean"]
+
         """
 
         log_info = getattr(self._parent, "info")
-        # log_warning = getattr(self._parent, "warning")
-        # log_error = getattr(self._parent, "error")
 
         def wrapper(func: Callable, *args, **kwargs):
             log_str = f"{func.__qualname__} | OUTPUT |"
@@ -213,18 +235,34 @@ class LogOutput:
             else:
                 result = func(*args, **kwargs)
             if metrics is not None:
-                for metric in metrics:
-                    if callable(metric):
-                        out = metric(result)
-                    else:
-                        try:
-                            out = getattr(DataMetrics, metric)(result)
-                        except AttributeError:
+                if isinstance(metrics, dict):
+                    for metric, params in metrics.items():
+                        if (l := len(params)) != 3 and params is not None:
                             raise ValueError(
-                                f"{metric} is not available among the options"
+                                f"""
+                                {l} parameters supplied to {metric}. Please use following format:
+                                '{metric}': (x_l, x_u, 'error') or '{metric}': None
+                                """
+                            )
+                        out = self._calculate_metric(result=result, metric=metric)
+                        output_dict[metric] = out
+
+                        if params is None:
+                            continue
+
+                        lower_bound, upper_bound, level = params
+                        if out < lower_bound or out > upper_bound:
+                            getattr(self._parent, level)(
+                                f"{level.upper()} | The {metric} is out of range on the defined thresholds"
                             )
 
-                    output_dict[metric] = out
+                elif isinstance(metrics, list):
+                    for metric in metrics:
+                        out = self._calculate_metric(result=result, metric=metric)
+                        output_dict[metric] = out
+
+                else:
+                    raise ValueError()
 
                 log_info(log_str + str(output_dict))
 

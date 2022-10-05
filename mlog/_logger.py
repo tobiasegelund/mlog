@@ -1,3 +1,4 @@
+import json
 import logging
 
 from ._os import find_hidden_mlog_dir
@@ -19,7 +20,10 @@ class Logger:
     Typestates: logger.profile.log(), logger.ml.log(), logger.data.log()
 
     # What to do if we observe the same name twice? Link it based on the script it is found in?
-
+     - Options to hard reset at each load, or at each 10 run then clear cache etc.
+     - Perhaps include environment variable
+     - Logging folders / files and by levels
+     - Add RWLock to read and write cache files, may be proper use of from contextlib import contextmanager
     """
 
     _hidden_dir = find_hidden_mlog_dir()
@@ -28,7 +32,6 @@ class Logger:
         self,
         format: str = "%(asctime)s | %(levelname)s | %(message)s",
         level=logging.INFO,
-        # environment: str = "development",
     ) -> None:
         # TODO: Update type param for level
         logging.basicConfig(format=format, level=level)
@@ -39,16 +42,6 @@ class Logger:
         self._profile = LogProfile(self)
         self._input = LogInput(self)
         self._output = LogOutput(self)
-
-    # TODO: Divide the log by level into multiple logs if wanted
-    # def add(self, key: str) -> None:
-    #     # Add more output files
-    #     # val = getattr(self, key)
-    #     pass
-
-    def _load_cache(self) -> None:
-        # Load mapping of files and functions => UUID
-        pass
 
     @property
     def profile(self) -> LogProfile:
