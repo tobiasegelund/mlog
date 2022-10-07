@@ -8,3 +8,7 @@ class LevelError(Exception):
 
 class InputFormatError(Exception):
     pass
+
+
+class OutputError(Exception):
+    pass

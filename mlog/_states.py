@@ -8,8 +8,8 @@ import pandas as pd
 import numpy as np
 
 from ._utils import is_method, map_args
-from ._exceptions import ArgumentNotCallable, InputFormatError
-from ._metrics import DataMetrics
+from ._exceptions import ArgumentNotCallable, InputFormatError, OutputError
+from ._metrics import get_data_metric
 from ._format import convert_bytes_to_gb, convert_bytes_to_mb
 
 
@@ -39,6 +39,7 @@ class LogProfile:
         - Apply sensitivity analysis? => Like add 1e4 +- to some specified
         - Focused around pandas dataframe / Pytorch Tensor / Numpy array => Standard lib in ML
         - Change all future exceptions with warnings instead
+        - Add UUID / Run id to match failures etc if it runs concurrently
         """
         start_time = datetime.datetime.now()
         log = getattr(self._parent, "info")
@@ -153,7 +154,7 @@ class LogInput:
                                     raise ValueError("Function failed due to {e}")
                             else:
                                 try:
-                                    out = getattr(DataMetrics, metric)(data)
+                                    out = get_data_metric(metric)(data)
                                 except AttributeError:
                                     raise ValueError(
                                         f"{metric} is not a possible metric"
@@ -195,7 +196,7 @@ class LogOutput:
             out = metric(result)
         else:
             try:
-                out = getattr(DataMetrics, metric)(result)
+                out = get_data_metric(metric)(result)
             except AttributeError:
                 raise ValueError(f"{metric} is not available among the options")
 
@@ -234,15 +235,18 @@ class LogOutput:
                 result = func(self, *args, **kwargs)
             else:
                 result = func(*args, **kwargs)
+
+            if result is None:
+                raise OutputError(
+                    f"{func.__qualname__} does not return any values. Impossible to run any statistics on the output"
+                )
+
             if metrics is not None:
                 if isinstance(metrics, dict):
                     for metric, params in metrics.items():
                         if (l := len(params)) != 3 and params is not None:
                             raise ValueError(
-                                f"""
-                                {l} parameters supplied to {metric}. Please use following format:
-                                '{metric}': (x_l, x_u, 'error') or '{metric}': None
-                                """
+                                f"{l} parameters supplied to {metric}. Please use following format: '{metric}': (x_l, x_u, 'error') or '{metric}': None"
                             )
                         out = self._calculate_metric(result=result, metric=metric)
                         output_dict[metric] = out
