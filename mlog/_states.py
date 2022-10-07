@@ -67,8 +67,6 @@ class LogProfile:
             # profiling_dict = marshalling_dict(profiling_dict)
             log(log_str + str(profiling_dict))
 
-            # TODO: Measure output
-
             return result
 
         if func is not None:
@@ -208,7 +206,9 @@ class LogOutput:
         func: Optional[Callable] = None,
         *,
         metrics: Optional[
-            Union[Dict[str, Union[Tuple[Any, Any, Any], List[Any]]], List[Any]]
+            Union[
+                Dict[str, Optional[Union[Tuple[Any, Any, str], List[Any]]]], List[Any]
+            ]
         ] = None,
     ) -> Callable:
         """
