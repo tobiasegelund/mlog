@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools", "setuptools-scm"]
+requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -19,7 +19,7 @@ dependencies = [
     "pandas",
     'python_version>="3.8"',
 ]
-dynamic = ["version"]
 
-[tool.setuptools]
-packages = ["mlog"]
+[tool.setuptools.packages.find]
+include = ["mlog"]
+exclude = [".gitignore", "tests", "Makefile", "requirements"]
