@@ -21,3 +21,8 @@ def df():
 @pytest.fixture
 def array(df):
     yield df.to_numpy()
+
+
+@pytest.fixture
+def data_list():
+    yield [2, 3, 4, 8, 10]
