@@ -10,6 +10,11 @@ TODO:
 
     - Add mode, standard deviation, variance, frequency
     - Aggregates as sum, count, and
+
+    Clean up:
+    - Better log messages output
+    - Remove duplicate code
+    - Refractor
 """
 
 import sys
@@ -176,8 +181,8 @@ class LogInput(LogState):
                         kw_dict[kw] = metric_dict
 
                     elif isinstance(inner_metrics, dict):
+                        feature_dict = {}
                         for feature, rules_or_metrics in inner_metrics.items():
-                            feature_dict = {}
                             if isinstance(feature, str) and isinstance(
                                 data, pd.DataFrame
                             ):
@@ -185,7 +190,7 @@ class LogInput(LogState):
                                     feat_data = data[feature]
                                 except KeyError:
                                     self.log_warning(
-                                        f"{feature} not available a feature in {kw}"
+                                        f"{feature} is not an available feature in {kw}"
                                     )
                                     continue
 
@@ -196,7 +201,7 @@ class LogInput(LogState):
                                     feat_data = data.iloc[:, feature]
                                 except KeyError:
                                     self.log_warning(
-                                        f"{feature} not available a feature in {kw}"
+                                        f"Index {feature} is out of range in {kw}"
                                     )
                                     continue
 
@@ -253,7 +258,7 @@ class LogInput(LogState):
                                     f"The argument metrics holds a {type(rules_or_metrics)} object. Only dictionary and lists are allowed."
                                 )
                             feature_dict[feature] = metric_dict
-                            kw_dict[kw] = feature_dict
+                        kw_dict[kw] = feature_dict
 
                     else:
                         raise InputError(
@@ -306,9 +311,7 @@ class LogOutput(LogState):
             >>> def func(X):
             >>>     return X
         """
-        run_id = hash_string(
-            str(datetime.datetime.now()), length=6
-        )  # TODO: Make run id across input, output and profile
+        run_id = hash_string(str(datetime.datetime.now()), length=6)
 
         def wrapper(func: Callable, *args, **kwargs):
             log_str = f"{func.__qualname__} | OUTPUT | "
