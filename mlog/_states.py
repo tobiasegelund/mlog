@@ -135,7 +135,7 @@ class LogInput(LogState):
         self,
         func: Optional[Callable] = None,
         *,
-        metrics: Optional[Dict[str, List[Union[str, Callable]]]] = None,
+        metrics: Optional[Dict[str, Union[Dict, List[Union[str, Callable]]]]] = None,
     ) -> Callable:
         """
 
@@ -182,11 +182,12 @@ class LogInput(LogState):
                         log_str += str(input_metric_dict)
 
                     elif isinstance(inner_metrics, dict):
-                        for feature, rules in inner_metrics.items():
+                        for feature, rules_or_metrics in inner_metrics.items():
+                            # TODO: Fix Feature name output
                             log_str += f"{feature}: "
                             # TODO: Add the option to select by index for DataFrames
                             if isinstance(feature, str) and isinstance(
-                                kw, pd.DataFrame
+                                data, pd.DataFrame
                             ):
                                 try:
                                     feat_data = data[feature]
@@ -196,7 +197,9 @@ class LogInput(LogState):
                                     )
                                     continue
 
-                            if isinstance(feature, int) and isinstance(kw, np.ndarray):
+                            elif isinstance(feature, int) and isinstance(
+                                data, np.ndarray
+                            ):
                                 try:
                                     feat_data = data[:, feature]
                                 except IndexError:
@@ -205,11 +208,11 @@ class LogInput(LogState):
                                     )
                                     continue
                             else:
-                                raise InputError()
+                                raise InputError(f"{type(feature)} and {type(data)}")
 
-                            if isinstance(rules, dict):
+                            if isinstance(rules_or_metrics, dict):
                                 input_metric_dict = {}
-                                for metric, params in rules.items():
+                                for metric, params in rules_or_metrics.items():
                                     if params is not None:
                                         validate_dtype(
                                             input=params,
@@ -218,7 +221,7 @@ class LogInput(LogState):
                                         out = self._calculate_metric(
                                             data=feat_data, metric=metric
                                         )
-                                        lower_bound, upper_bound = rules
+                                        lower_bound, upper_bound = params
                                         if out < lower_bound or out > upper_bound:
                                             self.log_warning(
                                                 f"{func.__qualname__} | {kw} - {feature} | {metric}: {out} out of bounds [{lower_bound}, {upper_bound}]"
@@ -234,15 +237,15 @@ class LogInput(LogState):
                                     except AttributeError:
                                         input_metric_dict[metric] = out
 
-                            elif isinstance(rules, list):
+                            elif isinstance(rules_or_metrics, list):
                                 input_metric_dict = self._calculate_metrics(
                                     data=feat_data,
-                                    metrics=rules,  # TODO: Rename _metrics
+                                    metrics=rules_or_metrics,  # TODO: Rename _metrics
                                 )
 
                             else:
                                 raise InputError(
-                                    f"The argument metrics holds a {type(rules)} object. Only dictionary and lists are allowed."
+                                    f"The argument metrics holds a {type(rules_or_metrics)} object. Only dictionary and lists are allowed."
                                 )
 
                             log_str += str(input_metric_dict)

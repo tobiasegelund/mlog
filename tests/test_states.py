@@ -5,6 +5,14 @@ from mlog._exceptions import OutputError, InputError
 
 def test_input_df(logger, df):
     @logger.input.log(metrics={"i": ["mean"]})
+    @logger.input.log(
+        metrics={
+            "i": {
+                "feat1": {"mean": (1, 5)},
+                "feat2": ["mean", "percentile25", "count", "nans", "duplicates"],
+            }
+        }
+    )
     def test_func(i):
         pass
 
@@ -13,6 +21,14 @@ def test_input_df(logger, df):
 
 def test_input_array(logger, array):
     @logger.input.log(metrics={"i": ["mean"]})
+    @logger.input.log(
+        metrics={
+            "i": {
+                0: {"mean": (1, 5)},
+                1: ["mean", "percentile25", "count", "nans", "duplicates"],
+            }
+        }
+    )
     def test_func(i):
         pass
 

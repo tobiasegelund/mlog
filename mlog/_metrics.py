@@ -38,142 +38,143 @@ def get_data_metric(metric: str) -> Callable:
 def count(X: Any):
     return len(X)
 
-    # @classmethod
-    # def mode(X: Any):
-    #     if isinstance(X, pd.DataFrame):
-    #         return X.mode().tolist()
 
-    #     if isinstance(X, np.ndarray):
-    #         return list(np.mode(X).sum(axis=0))
+# def mode(X: Any):
+#     if isinstance(X, pd.DataFrame):
+#         return X.mode().tolist()
 
-    #     elif isinstance(X, list):
-    #         return np.mode(X).sum()
+#     if isinstance(X, np.ndarray):
+#         return list(np.mode(X).sum(axis=0))
 
-    #     else:
-    # raise InputError("{type(X)} must be a list, DataFrame or Numpy ndarray")
+#     elif isinstance(X, list) or isinstance(X, pd.Series):
+#         return np.mode(X).sum()
+
+#     else:
+# raise InputError("{X} must be a list, DataFrame or Numpy ndarray")
 
 
 def duplicates(X: Any):
     if isinstance(X, pd.DataFrame):
         return int(X.duplicated().sum())
-
-    if isinstance(X, np.ndarray):
-        return int(len(X) - len(np.unique(X, axis=0)))
-
-    elif isinstance(X, list):
+    try:
+        if isinstance(X, np.ndarray) and len(X.shape) > 1:
+            return int(len(X) - len(np.unique(X, axis=0)))
+    except AttributeError:
         return int(len(X) - len(set(X)))
 
-    else:
-        raise ValueError()
+    return int(len(X) - len(set(X)))
 
 
 def nans(X: Any):
     if isinstance(X, pd.DataFrame):
         return X.isna().sum().tolist()
-
-    if isinstance(X, np.ndarray):
-        return list(np.isnan(X).sum(axis=0))
-
-    elif isinstance(X, list):
+    try:
+        if isinstance(X, np.ndarray) and len(X.shape) > 1:
+            return list(np.isnan(X).sum(axis=0))
+    except AttributeError:
         return np.isnan(X).sum()
 
-    else:
-        raise InputError(f"{type(X)} must be a list, DataFrame or Numpy ndarray")
+    return np.isnan(X).sum()
 
 
 def mean(X: Any):
     if isinstance(X, pd.DataFrame):
         return X.mean().tolist()
+    try:
+        if isinstance(X, np.ndarray) and len(X.shape) > 1:
+            return list(np.mean(X, axis=0))
 
-    if isinstance(X, np.ndarray):
-        return list(np.mean(X, axis=0))
-
-    elif isinstance(X, list):
+    except AttributeError:
         return np.mean(X)
-
-    else:
-        raise InputError(f"{type(X)} must be a list, DataFrame or Numpy ndarray")
+    return np.mean(X)
 
 
 def percentile1(X):
     q = 1
-    if isinstance(X, np.ndarray) or isinstance(X, pd.DataFrame):
-        return list(np.percentile(X, q=q, axis=0))
-
-    elif isinstance(X, list):
+    try:
+        if (isinstance(X, np.ndarray) and len(X.shape) > 1) or isinstance(
+            X, pd.DataFrame
+        ):
+            return list(np.percentile(X, q=q, axis=0))
+    except AttributeError:
         return np.percentile(X, q=q)
 
-    else:
-        raise InputError(f"{type(X)} must be a list, DataFrame or Numpy ndarray")
+    return np.percentile(X, q=q)
 
 
 def percentile5(X):
     q = 5
-    if isinstance(X, np.ndarray) or isinstance(X, pd.DataFrame):
-        return list(np.percentile(X, q=q, axis=0))
-
-    elif isinstance(X, list):
+    try:
+        if (isinstance(X, np.ndarray) and len(X.shape) > 1) or isinstance(
+            X, pd.DataFrame
+        ):
+            return list(np.percentile(X, q=q, axis=0))
+    except AttributeError:
         return np.percentile(X, q=q)
 
-    else:
-        raise InputError(f"{type(X)} must be a list, DataFrame or Numpy ndarray")
+    return np.percentile(X, q=q)
 
 
 def percentile25(X):
     q = 25
-    if isinstance(X, np.ndarray) or isinstance(X, pd.DataFrame):
-        return list(np.percentile(X, q=q, axis=0))
-
-    elif isinstance(X, list):
+    try:
+        if (isinstance(X, np.ndarray) and len(X.shape) > 1) or isinstance(
+            X, pd.DataFrame
+        ):
+            return list(np.percentile(X, q=q, axis=0))
+    except AttributeError:
         return np.percentile(X, q=q)
 
-    else:
-        raise InputError(f"{type(X)} must be a list, DataFrame or Numpy ndarray")
+    return np.percentile(X, q=q)
 
 
 def median(X):
     q = 50
-    if isinstance(X, np.ndarray) or isinstance(X, pd.DataFrame):
-        return list(np.percentile(X, q=q, axis=0))
-
-    elif isinstance(X, list):
+    try:
+        if (isinstance(X, np.ndarray) and len(X.shape) > 1) or isinstance(
+            X, pd.DataFrame
+        ):
+            return list(np.percentile(X, q=q, axis=0))
+    except AttributeError:
         return np.percentile(X, q=q)
 
-    else:
-        raise InputError(f"{type(X)} must be a list, DataFrame or Numpy ndarray")
+    return np.percentile(X, q=q)
 
 
 def percentile75(X):
     q = 75
-    if isinstance(X, np.ndarray) or isinstance(X, pd.DataFrame):
-        return list(np.percentile(X, q=q, axis=0))
-
-    elif isinstance(X, list):
+    try:
+        if (isinstance(X, np.ndarray) and len(X.shape) > 1) or isinstance(
+            X, pd.DataFrame
+        ):
+            return list(np.percentile(X, q=q, axis=0))
+    except AttributeError:
         return np.percentile(X, q=q)
 
-    else:
-        raise InputError(f"{type(X)} must be a list, DataFrame or Numpy ndarray")
+    return np.percentile(X, q=q)
 
 
 def percentile95(X):
     q = 95
-    if isinstance(X, np.ndarray) or isinstance(X, pd.DataFrame):
-        return list(np.percentile(X, q=q, axis=0))
-
-    elif isinstance(X, list):
+    try:
+        if (isinstance(X, np.ndarray) and len(X.shape) > 1) or isinstance(
+            X, pd.DataFrame
+        ):
+            return list(np.percentile(X, q=q, axis=0))
+    except AttributeError:
         return np.percentile(X, q=q)
 
-    else:
-        raise InputError(f"{type(X)} must be a list, DataFrame or Numpy ndarray")
+    return np.percentile(X, q=q)
 
 
 def percentile99(X):
     q = 99
-    if isinstance(X, np.ndarray) or isinstance(X, pd.DataFrame):
-        return list(np.percentile(X, q=q, axis=0))
-
-    elif isinstance(X, list):
+    try:
+        if (isinstance(X, np.ndarray) and len(X.shape) > 1) or isinstance(
+            X, pd.DataFrame
+        ):
+            return list(np.percentile(X, q=q, axis=0))
+    except AttributeError:
         return np.percentile(X, q=q)
 
-    else:
-        raise InputError(f"{type(X)} must be a list, DataFrame or Numpy ndarray")
+    return np.percentile(X, q=q)
