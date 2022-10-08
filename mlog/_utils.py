@@ -1,8 +1,9 @@
 import inspect
 import hashlib
-from typing import Dict, Any, Callable, Optional
+from typing import Dict, Any, Callable, Optional, Union, Tuple, List
 
 from ._os import create_dir_if_not_exists
+from ._exceptions import DataTypeError
 
 HIDDEN_DIR = ".mlog"
 
@@ -37,3 +38,21 @@ def collect_path_to_callable(func: Callable) -> str:
 
 def _settings():
     create_dir_if_not_exists(HIDDEN_DIR)
+
+
+def validate_dtype(input: Union[List[Any], Tuple[Any]], expected_dtype: Any) -> None:
+    if isinstance(expected_dtype, list) or isinstance(expected_dtype, tuple):
+        for i in input:
+            check = list(isinstance(i, exp_t) for exp_t in expected_dtype)
+            if not any(check):
+                raise DataTypeError(
+                    f"{type(i)} does not meet the expected data type {expected_dtype}"
+                )
+        return
+
+    for i in input:
+        if not isinstance(i, expected_dtype):
+            raise DataTypeError(
+                f"{type(i)} does not meet the expected data type {expected_dtype}"
+            )
+    return
