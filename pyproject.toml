@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mlog"
+description = "A library to log input and output of machine learning systems"
+version = "0.0.1"
+readme = "README.md"
+requires-python = ">=3.8"
+keywords = ["logging", "machine learning", "dataframe"]
+# license = {text = "BSD 3-Clause License"}
+classifiers = [
+    "Library :: mlog",
+    "Programming Language :: Python :: 3.8",
+]
+dependencies = [
+    "numpy",
+    "pandas",
+    'python_version>="3.8"',
+]
+dynamic = ["version"]
+
+[tool.setuptools]
+packages = ["mlog"]

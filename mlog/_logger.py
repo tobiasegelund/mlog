@@ -1,14 +1,19 @@
-import json
+from pathlib import Path
 import logging
+from typing import Union, Optional
 
 from ._os import find_hidden_mlog_dir
 from ._states import LogInput, LogOutput, LogProfile
 
 
 class Logger:
-    """High-level inferface of the logger class
+    """A high-level extension of the logger class from Python standard logging library.
 
-    A class to handle logging of deployed machine learnings models, including tracing and profiling.
+    On one hand the class holds the same features and settings as the standard library, while on the other
+    it has extended it options to calculate metrics of input and output of functions and methods.
+
+    The logging class is focused around machine learning systems, and to monitor any changes in input and output data
+    to catch any data shifts.
 
     Params:
 
@@ -20,21 +25,22 @@ class Logger:
     Typestates: logger.profile.log(), logger.ml.log(), logger.data.log()
 
     # What to do if we observe the same name twice? Link it based on the script it is found in?
-     - Options to hard reset at each load, or at each 10 run then clear cache etc.
      - Perhaps include environment variable
      - Logging folders / files and by levels
-     - Add RWLock to read and write cache files, may be proper use of from contextlib import contextmanager
     """
 
-    _hidden_dir = find_hidden_mlog_dir()
+    # _hidden_dir = find_hidden_mlog_dir()
 
     def __init__(
         self,
+        filename: Optional[Union[str, Path]] = None,
+        filemode: str = "a",
         format: str = "%(asctime)s | %(levelname)s | %(message)s",
         level=logging.INFO,
     ) -> None:
-        # TODO: Update type param for level
-        logging.basicConfig(format=format, level=level)
+        logging.basicConfig(
+            filename=filename, filemode=filemode, format=format, level=level
+        )
         self.logger = logging.getLogger(__name__)
 
         # Initialize the possible states
@@ -46,7 +52,6 @@ class Logger:
     @property
     def profile(self) -> LogProfile:
         # Specify requirements to log profiling, e.g. define the min/max to execute the job
-        # The amount of data
         return self._profile
 
     @property
