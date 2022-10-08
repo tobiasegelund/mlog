@@ -8,6 +8,10 @@ from ._exceptions import DataTypeError
 HIDDEN_DIR = ".mlog"
 
 
+def _settings():
+    create_dir_if_not_exists(HIDDEN_DIR)
+
+
 def is_method(func: Callable):
     spec = inspect.signature(func)
     if len(spec.parameters) > 0:
@@ -36,11 +40,7 @@ def collect_path_to_callable(func: Callable) -> str:
     return inspect.getfile(func)
 
 
-def _settings():
-    create_dir_if_not_exists(HIDDEN_DIR)
-
-
-def validate_dtype(input: Union[List[Any], Tuple[Any]], expected_dtype: Any) -> None:
+def validate_dtype(input: Union[List, Tuple], expected_dtype: Any) -> None:
     if isinstance(expected_dtype, list) or isinstance(expected_dtype, tuple):
         for i in input:
             check = list(isinstance(i, exp_t) for exp_t in expected_dtype)

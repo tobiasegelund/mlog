@@ -7,7 +7,7 @@ from functools import wraps, partial
 import pandas as pd
 import numpy as np
 
-from ._utils import is_method, map_args, hash_string
+from ._utils import is_method, map_args, hash_string, validate_dtype
 from ._exceptions import (
     ArgumentNotCallable,
     InputError,
@@ -25,6 +25,35 @@ class LogState(ABC):
         self.log_info = getattr(_parent, "info")
         self.log_warning = getattr(_parent, "warning")
         self.log_error = getattr(_parent, "error")
+
+    def _calculate_metric(self, data: Any, metric: Union[Callable, str]) -> float:
+        if callable(metric):
+            out = metric(data)
+        else:
+            try:
+                out = get_data_metric(metric)(data)
+            except AttributeError:
+                raise MetricFunctionError(
+                    f"{metric} is not an available option among the standard metrics. You can add the callable function itself to the metrics."
+                )
+
+        return out
+
+    def _calculate_metrics(
+        self, data: Any, metrics: List[Union[str, Callable]]
+    ) -> Dict[str, Any]:
+        validate_dtype(input=metrics, expected_dtype=[str, Callable])
+
+        metric_dict = dict()
+        for metric in metrics:
+            out = self._calculate_metric(data=data, metric=metric)
+
+            try:
+                metric_dict[metric.__name__] = out
+            except AttributeError:
+                metric_dict[metric] = out
+
+        return metric_dict
 
     @abstractmethod
     def log(self) -> Callable:
@@ -73,7 +102,6 @@ class LogProfile(LogState):
                 end_time = datetime.datetime.now()
                 profiling_dict["execution_time"] = str(end_time - start_time)  # seconds
 
-            # profiling_dict = marshalling_dict(profiling_dict)
             self.log_info(log_str + str(profiling_dict))
 
             return result
@@ -116,19 +144,15 @@ class LogInput(LogState):
             >>> def func(df):
             >>>    pass
 
-            >>> @logger.input.log({"df": metrics={"feat1": {"mean": (4, 6)}}})
+            >>> @logger.input.log(metrics={"df": {"feat1": {"mean": (4, 6)}}})
             >>> def func(df):
             >>>    pass
 
-            >>> @logger.input.log({"df": metrics={0: {"mean": (4, 6)}}})
+            >>> @logger.input.log(metrics={"X": {0: {"mean": (4, 6)}}})
             >>> def func(df):
             >>>    pass
 
-            >>> @logger.input.log({"X": metrics={0: {"mean": (4, 6)}}})
-            >>> def func(df):
-            >>>    pass
-
-            >>> @logger.input.log({"X": metrics={0: ["mean"]}}})
+            >>> @logger.input.log(metrics={"X": {0: ["mean"]}})
             >>> def func(df):
             >>>    pass
         """
@@ -136,52 +160,99 @@ class LogInput(LogState):
 
         def wrapper(func: Callable, *args, **kwargs):
             kwargs_mapping = map_args(func, *args, **kwargs)
+            log_str = f"{func.__qualname__} | INPUT | "
 
             if metrics is not None:
-                if isinstance(metrics, dict):
-                    log_str = f"{func.__qualname__} | INPUT | "
-                    for kw, _metrics in metrics.items():
-                        data = kwargs_mapping.get(kw, None)
-                        if data is None:
-                            continue
-
-                        if not (
-                            isinstance(data, pd.DataFrame)
-                            or isinstance(data, np.ndarray)
-                            or isinstance(data, list)
-                        ):
-                            raise InputError(
-                                f"{kw} must be a list, DataFrame or Numpy ndarray"
-                            )
-                        # TODO: Map of feat values
-                        log_str += f"{kw}: "
-                        input_metric_dict = dict()
-                        for metric in _metrics:
-                            if callable(metric):
-                                try:
-                                    out = metric(data)
-                                except Exception as e:  # TODO: Better exception handling
-                                    raise MetricFunctionError(
-                                        f"{metric} failed with the error: {e}"
-                                    )
-                            else:
-                                try:
-                                    out = get_data_metric(metric)(data)
-                                except AttributeError:
-                                    raise ValueError(
-                                        f"{metric} is not a possible metric"
-                                    )
-                            input_metric_dict[metric] = out
-
-                        # TODO: Save input metric dict
-                        # input_metric_dict = marshalling_dict(input_metric_dict)
-                        log_str += str(input_metric_dict)
-                        self.log_info(log_str)
-
-                else:
+                if not isinstance(metrics, dict):
                     raise InputError(
-                        f"The argument metrics is a {type(metrics)} object. Only dictionary and lists are allowed."
+                        f"The argument metrics is a {type(metrics)} object. Only dictionary is allowed."
                     )
+
+                for kw, inner_metrics in metrics.items():
+                    log_str += f"{kw}: "
+                    data = kwargs_mapping.get(kw, None)
+                    if data is None:
+                        continue
+
+                    if isinstance(inner_metrics, list):
+                        input_metric_dict = self._calculate_metrics(
+                            data=data, metrics=inner_metrics
+                        )
+
+                        log_str += str(input_metric_dict)
+
+                    elif isinstance(inner_metrics, dict):
+                        for feature, rules in inner_metrics.items():
+                            log_str += f"{feature}: "
+                            # TODO: Add the option to select by index for DataFrames
+                            if isinstance(feature, str) and isinstance(
+                                kw, pd.DataFrame
+                            ):
+                                try:
+                                    feat_data = data[feature]
+                                except KeyError:
+                                    self.log_warning(
+                                        f"{feature} not available a feature in {kw}"
+                                    )
+                                    continue
+
+                            if isinstance(feature, int) and isinstance(kw, np.ndarray):
+                                try:
+                                    feat_data = data[:, feature]
+                                except IndexError:
+                                    self.log_warning(
+                                        f"Index {feature} is out of range in {kw}"
+                                    )
+                                    continue
+                            else:
+                                raise InputError()
+
+                            if isinstance(rules, dict):
+                                input_metric_dict = {}
+                                for metric, params in rules.items():
+                                    if params is not None:
+                                        validate_dtype(
+                                            input=params,
+                                            expected_dtype=[int, float],
+                                        )
+                                        out = self._calculate_metric(
+                                            data=feat_data, metric=metric
+                                        )
+                                        lower_bound, upper_bound = rules
+                                        if out < lower_bound or out > upper_bound:
+                                            self.log_warning(
+                                                f"{func.__qualname__} | {kw} - {feature} | {metric}: {out} out of bounds [{lower_bound}, {upper_bound}]"
+                                            )
+
+                                    else:
+                                        out = self._calculate_metric(
+                                            data=feat_data, metric=metric
+                                        )
+
+                                    try:
+                                        input_metric_dict[metric.__name__] = out
+                                    except AttributeError:
+                                        input_metric_dict[metric] = out
+
+                            elif isinstance(rules, list):
+                                input_metric_dict = self._calculate_metrics(
+                                    data=feat_data,
+                                    metrics=rules,  # TODO: Rename _metrics
+                                )
+
+                            else:
+                                raise InputError(
+                                    f"The argument metrics holds a {type(rules)} object. Only dictionary and lists are allowed."
+                                )
+
+                            log_str += str(input_metric_dict)
+
+                    else:
+                        raise InputError(
+                            f"The argument metrics is a {type(metrics)} object. Only dictionary is allowed."
+                        )
+
+                    self.log_info(log_str)
 
             if is_method(func):
                 return func(self, *args, **kwargs)
@@ -201,19 +272,6 @@ class LogInput(LogState):
 
 
 class LogOutput(LogState):
-    def _calculate_metric(self, result: Any, metric: Union[Callable, str]) -> float:
-        if callable(metric):
-            out = metric(result)
-        else:
-            try:
-                out = get_data_metric(metric)(result)
-            except AttributeError:
-                raise MetricFunctionError(
-                    f"{metric} is not an available option among the standard metrics. You can add the callable function itself to the metrics."
-                )
-
-        return out
-
     def log(
         self,
         func: Optional[Callable] = None,
@@ -267,15 +325,16 @@ class LogOutput(LogState):
                                 raise ValueError(
                                     f"{l} parameters supplied to {metric}. Please use following format: '{metric}': (x_l, x_u) or '{metric}': None"
                                 )
+                            validate_dtype(params, expected_dtype=[float, int])
 
-                            out = self._calculate_metric(result=result, metric=metric)
+                            out = self._calculate_metric(data=result, metric=metric)
                             lower_bound, upper_bound = params
                             if out < lower_bound or out > upper_bound:
                                 self.log_warning(
                                     f"{func.__qualname__} | {metric}: {out} out of bounds [{lower_bound}, {upper_bound}]"
                                 )
                         else:
-                            out = self._calculate_metric(result=result, metric=metric)
+                            out = self._calculate_metric(data=result, metric=metric)
 
                         try:
                             output_dict[metric.__name__] = out
@@ -283,9 +342,7 @@ class LogOutput(LogState):
                             output_dict[metric] = out
 
                 elif isinstance(metrics, list):
-                    for metric in metrics:
-                        out = self._calculate_metric(result=result, metric=metric)
-                        output_dict[metric] = out
+                    output_dict = self._calculate_metrics(data=result, metrics=metrics)
 
                 else:
                     raise InputError(

@@ -8,6 +8,8 @@ import numpy as np
 import pandas as pd
 import numpy as np
 
+from ._exceptions import InputError
+
 
 def get_data_metric(metric: str) -> Callable:
     mapping = {
@@ -36,20 +38,19 @@ def get_data_metric(metric: str) -> Callable:
 def count(X: Any):
     return len(X)
 
+    # @classmethod
+    # def mode(X: Any):
+    #     if isinstance(X, pd.DataFrame):
+    #         return X.mode().tolist()
 
-# @classmethod
-# def mode(X: Any):
-#     if isinstance(X, pd.DataFrame):
-#         return X.mode().tolist()
+    #     if isinstance(X, np.ndarray):
+    #         return list(np.mode(X).sum(axis=0))
 
-#     if isinstance(X, np.ndarray):
-#         return list(np.mode(X).sum(axis=0))
+    #     elif isinstance(X, list):
+    #         return np.mode(X).sum()
 
-#     elif isinstance(X, list):
-#         return np.mode(X).sum()
-
-#     else:
-#         raise ValueError()
+    #     else:
+    # raise InputError("{type(X)} must be a list, DataFrame or Numpy ndarray")
 
 
 def duplicates(X: Any):
@@ -77,7 +78,7 @@ def nans(X: Any):
         return np.isnan(X).sum()
 
     else:
-        raise ValueError()
+        raise InputError(f"{type(X)} must be a list, DataFrame or Numpy ndarray")
 
 
 def mean(X: Any):
@@ -91,7 +92,7 @@ def mean(X: Any):
         return np.mean(X)
 
     else:
-        raise ValueError()
+        raise InputError(f"{type(X)} must be a list, DataFrame or Numpy ndarray")
 
 
 def percentile1(X):
@@ -103,7 +104,7 @@ def percentile1(X):
         return np.percentile(X, q=q)
 
     else:
-        raise ValueError()
+        raise InputError(f"{type(X)} must be a list, DataFrame or Numpy ndarray")
 
 
 def percentile5(X):
@@ -115,7 +116,7 @@ def percentile5(X):
         return np.percentile(X, q=q)
 
     else:
-        raise ValueError()
+        raise InputError(f"{type(X)} must be a list, DataFrame or Numpy ndarray")
 
 
 def percentile25(X):
@@ -127,7 +128,7 @@ def percentile25(X):
         return np.percentile(X, q=q)
 
     else:
-        raise ValueError()
+        raise InputError(f"{type(X)} must be a list, DataFrame or Numpy ndarray")
 
 
 def median(X):
@@ -139,7 +140,7 @@ def median(X):
         return np.percentile(X, q=q)
 
     else:
-        raise ValueError()
+        raise InputError(f"{type(X)} must be a list, DataFrame or Numpy ndarray")
 
 
 def percentile75(X):
@@ -151,7 +152,7 @@ def percentile75(X):
         return np.percentile(X, q=q)
 
     else:
-        raise ValueError()
+        raise InputError(f"{type(X)} must be a list, DataFrame or Numpy ndarray")
 
 
 def percentile95(X):
@@ -163,7 +164,7 @@ def percentile95(X):
         return np.percentile(X, q=q)
 
     else:
-        raise ValueError()
+        raise InputError(f"{type(X)} must be a list, DataFrame or Numpy ndarray")
 
 
 def percentile99(X):
@@ -175,4 +176,4 @@ def percentile99(X):
         return np.percentile(X, q=q)
 
     else:
-        raise ValueError()
+        raise InputError(f"{type(X)} must be a list, DataFrame or Numpy ndarray")
