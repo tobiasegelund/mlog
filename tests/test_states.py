@@ -1,6 +1,6 @@
 import pytest
 
-from mlog._exceptions import OutputError, InputFormatError
+from mlog._exceptions import OutputError, InputError
 
 
 def test_input_df(logger, df):
@@ -35,10 +35,10 @@ def test_output(logger):
     test_func()
 
 
-def test_output_no_return_values(logger):
-    @logger.output.log(metrics=["mean"])
+def test_output_wrong_metric_input(logger):
+    @logger.output.log(metrics="mean")
     def test_func(i=[10, 20, 30]):
         pass
 
-    with pytest.raises(OutputError) as exc_info:
+    with pytest.raises(InputError) as exc_info:
         test_func()

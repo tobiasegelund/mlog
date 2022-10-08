@@ -6,9 +6,13 @@ class LevelError(Exception):
     pass
 
 
-class InputFormatError(Exception):
+class InputError(Exception):
     pass
 
 
 class OutputError(Exception):
+    pass
+
+
+class DataTypeError(Exception):
     pass

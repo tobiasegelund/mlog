@@ -1,6 +1,6 @@
 import inspect
 import hashlib
-from typing import Dict, Any, Callable
+from typing import Dict, Any, Callable, Optional
 
 from ._os import create_dir_if_not_exists
 
@@ -25,7 +25,9 @@ def map_args(func: Callable, *args, **kwargs) -> Dict[str, Any]:
     return dict(zip(func_args[:args_length], args), **kwargs)
 
 
-def hash_name(name: str) -> str:
+def hash_string(name: str, length: Optional[int] = None) -> str:
+    if length is not None:
+        return hashlib.md5(name.encode("utf-8")).hexdigest()[:length]
     return hashlib.md5(name.encode("utf-8")).hexdigest()
 
 
