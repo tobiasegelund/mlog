@@ -8,7 +8,12 @@ import pandas as pd
 import numpy as np
 
 from ._utils import is_method, map_args, hash_string
-from ._exceptions import ArgumentNotCallable, InputError, OutputError
+from ._exceptions import (
+    ArgumentNotCallable,
+    InputError,
+    OutputError,
+    MetricFunctionError,
+)
 from ._metrics import get_data_metric
 from ._format import convert_bytes_to_gb, convert_bytes_to_mb
 
@@ -98,13 +103,6 @@ class LogInput(LogState):
         - Aggregates as sum, count, and
     """
 
-    def __init__(self, _parent) -> None:
-        self._parent = _parent
-
-        self.log_info = getattr(_parent, "info")
-        self.log_warning = getattr(_parent, "warning")
-        self.log_error = getattr(_parent, "error")
-
     def log(
         self,
         func: Optional[Callable] = None,
@@ -118,15 +116,15 @@ class LogInput(LogState):
             >>> def func(df):
             >>>    pass
 
-            >>> @logger.input.log({"df": metrics={"feat1": {"mean": [4, 6, "error"]}}})
+            >>> @logger.input.log({"df": metrics={"feat1": {"mean": (4, 6)}}})
             >>> def func(df):
             >>>    pass
 
-            >>> @logger.input.log({"df": metrics={0: {"mean": [4, 6, "error"]}}})
+            >>> @logger.input.log({"df": metrics={0: {"mean": (4, 6)}}})
             >>> def func(df):
             >>>    pass
 
-            >>> @logger.input.log({"X": metrics={0: {"mean": [4, 6, "error"]}}})
+            >>> @logger.input.log({"X": metrics={0: {"mean": (4, 6)}}})
             >>> def func(df):
             >>>    pass
 
@@ -163,7 +161,9 @@ class LogInput(LogState):
                                 try:
                                     out = metric(data)
                                 except Exception as e:  # TODO: Better exception handling
-                                    raise ValueError("Function failed due to {e}")
+                                    raise MetricFunctionError(
+                                        f"{metric} failed with the error: {e}"
+                                    )
                             else:
                                 try:
                                     out = get_data_metric(metric)(data)
@@ -180,7 +180,7 @@ class LogInput(LogState):
 
                 else:
                     raise InputError(
-                        "The input metrics must be defined as a dictionary, where the key refers to the features"
+                        f"The argument metrics is a {type(metrics)} object. Only dictionary and lists are allowed."
                     )
 
             if is_method(func):
@@ -208,7 +208,9 @@ class LogOutput(LogState):
             try:
                 out = get_data_metric(metric)(result)
             except AttributeError:
-                raise ValueError(f"{metric} is not available among the options")
+                raise MetricFunctionError(
+                    f"{metric} is not an available option among the standard metrics. You can add the callable function itself to the metrics."
+                )
 
         return out
 
@@ -252,14 +254,15 @@ class LogOutput(LogState):
 
             if result is None:
                 self.log_error(
-                    f"{func.__qualname__} does not return any values. Impossible to run any statistics on the output"
+                    f"{func.__qualname__} does not return any values. Impossible to run any statistics on the output."
                 )
+                return result
 
             if metrics is not None:
                 if isinstance(metrics, dict):
                     for metric, params in metrics.items():
                         if params is not None:
-                            # TODO: Validate dtypes
+                            # TODO: Validate dtypes to floats/ints
                             if (l := len(params)) != 2:
                                 raise ValueError(
                                     f"{l} parameters supplied to {metric}. Please use following format: '{metric}': (x_l, x_u) or '{metric}': None"
@@ -274,7 +277,10 @@ class LogOutput(LogState):
                         else:
                             out = self._calculate_metric(result=result, metric=metric)
 
-                        output_dict[metric] = out
+                        try:
+                            output_dict[metric.__name__] = out
+                        except AttributeError:
+                            output_dict[metric] = out
 
                 elif isinstance(metrics, list):
                     for metric in metrics:

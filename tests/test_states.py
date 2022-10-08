@@ -38,7 +38,18 @@ def test_output(logger):
 def test_output_wrong_metric_input(logger):
     @logger.output.log(metrics="mean")
     def test_func(i=[10, 20, 30]):
-        pass
+        return i
 
     with pytest.raises(InputError) as exc_info:
         test_func()
+
+
+def test_output_supply_self_defined_function(logger):
+    def counter(X):
+        return len(X)
+
+    @logger.output.log(metrics=["mean", counter])
+    def test_func(i=[10, 20, 30]):
+        return i
+
+    test_func()

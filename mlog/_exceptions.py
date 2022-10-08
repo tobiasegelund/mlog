@@ -16,3 +16,7 @@ class OutputError(Exception):
 
 class DataTypeError(Exception):
     pass
+
+
+class MetricFunctionError(Exception):
+    pass
