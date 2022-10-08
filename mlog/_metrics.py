@@ -8,8 +8,6 @@ import numpy as np
 import pandas as pd
 import numpy as np
 
-from ._exceptions import InputError
-
 
 def get_data_metric(metric: str) -> Callable:
     mapping = {

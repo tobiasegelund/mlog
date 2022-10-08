@@ -1,3 +1,17 @@
+"""
+TODO:
+    - Focused around pandas dataframe / Pytorch Tensor / Numpy array => Standard lib in ML
+    - Add UUID / Run id to match failures etc if it runs concurrently
+    - Add index => unique id => function / method name
+
+    - Validate data types
+    - Checking schemas (Correct naming, correct order) => Insert prefined schema (e.g. dataframe feature names)
+    - Syntax errors
+
+    - Add mode, standard deviation, variance, frequency
+    - Aggregates as sum, count, and
+"""
+
 import sys
 import datetime
 from abc import abstractmethod, ABC
@@ -67,18 +81,8 @@ class LogProfile(LogState):
         *,
         execution_time: bool = False,  # Specify format?
         memory_usage: bool = False,
+        run_id: Optional[str] = None,
     ) -> Callable:
-        """TODO:
-        - Add possible options that should be appended to the log
-        - Add index => unique id => function / method name
-        - Event based calculations of inp / output => Index
-        - Save to hidden directory
-        - Thresholds / Quality assurance => N and Quantiles (within which range)
-        - Apply sensitivity analysis? => Like add 1e4 +- to some specified
-        - Focused around pandas dataframe / Pytorch Tensor / Numpy array => Standard lib in ML
-        - Change all future exceptions with warnings instead
-        - Add UUID / Run id to match failures etc if it runs concurrently
-        """
         start_time = datetime.datetime.now()
 
         def wrapper(func: Callable, *args, **kwargs):
@@ -120,22 +124,12 @@ class LogProfile(LogState):
 
 
 class LogInput(LogState):
-    """
-    TODO:
-    Data quality:
-        - Validate data types
-        - Checking schemas (Correct naming, correct order) => Insert prefined schema (e.g. dataframe feature names)
-        - Syntax errors
-
-        - Add mode, standard deviation, variance, frequency
-        - Aggregates as sum, count, and
-    """
-
     def log(
         self,
         func: Optional[Callable] = None,
         *,
         metrics: Optional[Dict[str, Union[Dict, List[Union[str, Callable]]]]] = None,
+        run_id: Optional[str] = None,
     ) -> Callable:
         """
 
@@ -168,29 +162,38 @@ class LogInput(LogState):
                         f"The argument metrics is a {type(metrics)} object. Only dictionary is allowed."
                     )
 
+                kw_dict = {}
                 for kw, inner_metrics in metrics.items():
-                    log_str += f"{kw}: "
                     data = kwargs_mapping.get(kw, None)
                     if data is None:
                         continue
 
                     if isinstance(inner_metrics, list):
-                        input_metric_dict = self._calculate_metrics(
+                        metric_dict = self._calculate_metrics(
                             data=data, metrics=inner_metrics
                         )
 
-                        log_str += str(input_metric_dict)
+                        kw_dict[kw] = metric_dict
 
                     elif isinstance(inner_metrics, dict):
                         for feature, rules_or_metrics in inner_metrics.items():
-                            # TODO: Fix Feature name output
-                            log_str += f"{feature}: "
-                            # TODO: Add the option to select by index for DataFrames
+                            feature_dict = {}
                             if isinstance(feature, str) and isinstance(
                                 data, pd.DataFrame
                             ):
                                 try:
                                     feat_data = data[feature]
+                                except KeyError:
+                                    self.log_warning(
+                                        f"{feature} not available a feature in {kw}"
+                                    )
+                                    continue
+
+                            elif isinstance(feature, int) and isinstance(
+                                data, pd.DataFrame
+                            ):
+                                try:
+                                    feat_data = data.iloc[:, feature]
                                 except KeyError:
                                     self.log_warning(
                                         f"{feature} not available a feature in {kw}"
@@ -208,10 +211,12 @@ class LogInput(LogState):
                                     )
                                     continue
                             else:
-                                raise InputError(f"{type(feature)} and {type(data)}")
+                                raise InputError(
+                                    f"The combination of {type(feature)} and {type(data)} is currently not possible to filter on"
+                                )
 
                             if isinstance(rules_or_metrics, dict):
-                                input_metric_dict = {}
+                                metric_dict = {}
                                 for metric, params in rules_or_metrics.items():
                                     if params is not None:
                                         validate_dtype(
@@ -233,29 +238,29 @@ class LogInput(LogState):
                                         )
 
                                     try:
-                                        input_metric_dict[metric.__name__] = out
+                                        metric_dict[metric.__name__] = out
                                     except AttributeError:
-                                        input_metric_dict[metric] = out
+                                        metric_dict[metric] = out
 
                             elif isinstance(rules_or_metrics, list):
-                                input_metric_dict = self._calculate_metrics(
+                                metric_dict = self._calculate_metrics(
                                     data=feat_data,
-                                    metrics=rules_or_metrics,  # TODO: Rename _metrics
+                                    metrics=rules_or_metrics,  # TODO: Better variable name
                                 )
 
                             else:
                                 raise InputError(
                                     f"The argument metrics holds a {type(rules_or_metrics)} object. Only dictionary and lists are allowed."
                                 )
-
-                            log_str += str(input_metric_dict)
+                            feature_dict[feature] = metric_dict
+                            kw_dict[kw] = feature_dict
 
                     else:
                         raise InputError(
                             f"The argument metrics is a {type(metrics)} object. Only dictionary is allowed."
                         )
 
-                    self.log_info(log_str)
+                self.log_info(log_str + str(kw_dict))
 
             if is_method(func):
                 return func(self, *args, **kwargs)
@@ -288,6 +293,7 @@ class LogOutput(LogState):
                 List[Union[str, Callable]],
             ]
         ] = None,
+        run_id: Optional[str] = None,
     ) -> Callable:
         """
 
