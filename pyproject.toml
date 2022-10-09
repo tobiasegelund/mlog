@@ -6,16 +6,16 @@ build-backend = "setuptools.build_meta"
 name = "mlog"
 version = "0.1.0"
 authors = [
-  { name="Tobias Egelund", email="egelundtobias@gmail.com" },
+  {name="Tobias Egelund", email="egelundtobias@gmail.com" },
 ]
 description = "A library to log input and output of machine learning systems"
 readme = "README.md"
 requires-python = ">=3.8"
 keywords = ["logging", "machine learning", "dataframe"]
 classifiers = [
-    "Package :: mlog",
-    "Programming Language :: Python :: 3.8",
-    "License :: MIT License",
+  "Topic :: System :: Logging",
+  "Development Status :: 4 - Beta",
+  "License :: OSI Approved :: MIT License",
 ]
 dependencies = [
     "numpy",
@@ -26,7 +26,3 @@ dependencies = [
 [project.urls]
 "Homepage" = "https://github.com/tobiasegelund/mlog"
 "Bug Tracker" = "https://github.com/tobiasegelund/mlog/issues"
-
-[tool.setuptools.packages.find]
-include = ["mlog"]
-exclude = [".gitignore", "tests", "Makefile", "requirements"]

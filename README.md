@@ -8,7 +8,16 @@ The library offers the option to set thresholds to maintain a certain level of s
 Currently, the library is only compatible with NumPy arrays, Pandas DataFrames or lists. In the future, the logging will also be compatible with PyTorch Tensors.
 
 ## Installation
+To install the latest version of the library use the following command
+
 ```bash
+pip install git+https://github.com/tobiasegelund/mlog.git
+```
+
+or
+
+```bash
+pip install git+https://github.com/tobiasegelund/mlog.git@0.1.0
 ```
 
 ## Usage
