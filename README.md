@@ -1,4 +1,4 @@
-# MLog
+# mlog
 A library to log and monitor machine learning systems. It's built using the decorator and typestates design patterns to easily apply logging and specified function or methods of interest.
 
 The purpose of the library is to easily control and observe any data shift, as well as monitor I/O, CPU/GPU usage.

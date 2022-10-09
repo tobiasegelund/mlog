@@ -1,4 +1,6 @@
 import os
+import inspect
+from typing import Callable
 from pathlib import Path
 
 
@@ -14,3 +16,7 @@ def find_root_dir() -> Path:
 def find_hidden_mlog_dir() -> Path:
     root_dir = find_root_dir()
     return root_dir.joinpath(".mlog")
+
+
+def find_path_of_callable(func: Callable) -> str:
+    return inspect.getfile(func)

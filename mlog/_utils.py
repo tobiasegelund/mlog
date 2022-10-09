@@ -36,10 +36,6 @@ def hash_string(name: str, length: Optional[int] = None) -> str:
     return hashlib.md5(name.encode("utf-8")).hexdigest()
 
 
-def collect_path_to_callable(func: Callable) -> str:
-    return inspect.getfile(func)
-
-
 def validate_dtype(input: Union[List, Tuple], expected_dtype: Any) -> None:
     if isinstance(expected_dtype, list) or isinstance(expected_dtype, tuple):
         for i in input:
@@ -56,3 +52,9 @@ def validate_dtype(input: Union[List, Tuple], expected_dtype: Any) -> None:
                 f"{type(i)} does not meet the expected data type {expected_dtype}"
             )
     return
+
+
+def unwrap(func):
+    while hasattr(func, "__wrapped__"):
+        func = func.__wrapped__
+    return func

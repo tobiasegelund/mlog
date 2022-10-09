@@ -1,8 +1,10 @@
+import datetime
 from pathlib import Path
 import logging
 from typing import Union, Optional
 
 from ._os import find_hidden_mlog_dir
+from ._utils import hash_string
 from ._states import LogInput, LogOutput, LogProfile
 
 
@@ -19,8 +21,8 @@ class Logger:
 
 
     Usage:
-        >>>
-        >>>
+        >>> from mlog import Logger
+        >>> logger = Logger()
 
     Typestates: logger.profile.log(), logger.ml.log(), logger.data.log()
 
@@ -33,10 +35,12 @@ class Logger:
 
     def __init__(
         self,
+        *,
         filename: Optional[Union[str, Path]] = None,
         filemode: str = "a",
         format: str = "%(asctime)s | %(levelname)s | %(message)s",
         level=logging.INFO,
+        run_id: Optional[str] = None,
     ) -> None:
         logging.basicConfig(
             filename=filename, filemode=filemode, format=format, level=level
@@ -45,9 +49,15 @@ class Logger:
 
         # Initialize the possible states
         # TODO: Apply logic to each state here. In case a certain connection or file must be written for input logs
-        self._profile = LogProfile(self)
-        self._input = LogInput(self)
-        self._output = LogOutput(self)
+        run_id = self._create_run_id(run_id=run_id)
+        self._profile = LogProfile(self, run_id=run_id)
+        self._input = LogInput(self, run_id=run_id)
+        self._output = LogOutput(self, run_id=run_id)
+
+    def _create_run_id(self, run_id: Optional[str] = None) -> str:
+        if run_id is None:
+            return hash_string(str(datetime.datetime.now()), length=6)
+        return run_id
 
     @property
     def profile(self) -> LogProfile:

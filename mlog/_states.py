@@ -11,6 +11,8 @@ TODO:
     - Add mode, standard deviation, variance, frequency
     - Aggregates as sum, count, and
 
+    - Allow execution time in specified format, as well as memory consumption
+
     Clean up:
     - Better log messages output
     - Remove duplicate code
@@ -21,12 +23,12 @@ import sys
 import datetime
 from abc import abstractmethod, ABC
 from typing import Callable, Optional, Dict, List, Union, Tuple, Any
-from functools import wraps, partial
+from functools import wraps, partial, WRAPPER_ASSIGNMENTS, WRAPPER_UPDATES
 
 import pandas as pd
 import numpy as np
 
-from ._utils import is_method, map_args, hash_string, validate_dtype
+from ._utils import is_method, map_args, hash_string, validate_dtype, unwrap
 from ._exceptions import (
     ArgumentNotCallable,
     InputError,
@@ -35,15 +37,28 @@ from ._exceptions import (
 )
 from ._metrics import get_data_metric
 from ._format import convert_bytes_to_gb, convert_bytes_to_mb
+from ._os import find_path_of_callable
 
 
 class LogState(ABC):
-    def __init__(self, _parent) -> None:
+    path_to_func: Optional[str] = None
+
+    def __init__(self, _parent, run_id: str) -> None:
         self._parent = _parent
+        self.run_id = run_id
 
         self.log_info = getattr(_parent, "info")
         self.log_warning = getattr(_parent, "warning")
         self.log_error = getattr(_parent, "error")
+
+    def _find_path_to_func(self, func: Callable) -> None:
+        unwrapped_func = unwrap(func)
+        self.path_to_func = find_path_of_callable(unwrapped_func)
+
+    def _select_string_path(self, func: Callable, state: str, verbose: bool) -> str:
+        if verbose:
+            return f"{self.path_to_func}:{func.__qualname__} | RUN_ID: {self.run_id} | {state.upper()} | "
+        return f"{func.__qualname__} | {state.upper()} | "
 
     def _calculate_metric(self, data: Any, metric: Union[Callable, str]) -> float:
         if callable(metric):
@@ -84,17 +99,20 @@ class LogProfile(LogState):
         self,
         func: Optional[Callable] = None,
         *,
-        execution_time: bool = False,  # Specify format?
+        execution_time: bool = False,
         memory_usage: bool = False,
-        run_id: Optional[str] = None,
+        verbose: bool = False,
     ) -> Callable:
         start_time = datetime.datetime.now()
 
         def wrapper(func: Callable, *args, **kwargs):
+            self._find_path_to_func(func=func)
             kwargs_mapping = map_args(func, *args, **kwargs)
             profiling_dict = {}
 
-            log_str = f"{func.__qualname__} | PROFILING | "
+            log_str = self._select_string_path(
+                verbose=verbose, func=func, state="PROFILE"
+            )
             if memory_usage is True:
                 total = 0
                 for data in kwargs_mapping.values():
@@ -120,10 +138,16 @@ class LogProfile(LogState):
                 raise ArgumentNotCallable(
                     "Not a callable. Did you use a non-keyword argument?"
                 )
-            return wraps(func)(partial(wrapper, func))
+            return wraps(func, assigned=WRAPPER_ASSIGNMENTS, updated=WRAPPER_UPDATES)(
+                partial(wrapper, func)
+            )
 
         def wrap_callable(func: Callable) -> Callable:
-            return wraps(func)(partial(wrapper, func))
+            return wraps(
+                func,
+                assigned=WRAPPER_ASSIGNMENTS,
+                updated=WRAPPER_UPDATES,
+            )(partial(wrapper, func))
 
         return wrap_callable
 
@@ -134,7 +158,7 @@ class LogInput(LogState):
         func: Optional[Callable] = None,
         *,
         metrics: Optional[Dict[str, Union[Dict, List[Union[str, Callable]]]]] = None,
-        run_id: Optional[str] = None,
+        verbose: bool = False,
     ) -> Callable:
         """
 
@@ -155,11 +179,13 @@ class LogInput(LogState):
             >>> def func(df):
             >>>    pass
         """
-        run_id = hash_string(str(datetime.datetime.now()), length=6)
 
         def wrapper(func: Callable, *args, **kwargs):
+            self._find_path_to_func(func=func)
             kwargs_mapping = map_args(func, *args, **kwargs)
-            log_str = f"{func.__qualname__} | INPUT | "
+            log_str = self._select_string_path(
+                verbose=verbose, func=func, state="INPUT"
+            )
 
             if metrics is not None:
                 if not isinstance(metrics, dict):
@@ -190,7 +216,7 @@ class LogInput(LogState):
                                     feat_data = data[feature]
                                 except KeyError:
                                     self.log_warning(
-                                        f"{feature} is not an available feature in {kw}"
+                                        f"{log_str} | {feature} is not an available feature in {kw}"
                                     )
                                     continue
 
@@ -201,7 +227,7 @@ class LogInput(LogState):
                                     feat_data = data.iloc[:, feature]
                                 except KeyError:
                                     self.log_warning(
-                                        f"Index {feature} is out of range in {kw}"
+                                        f"{log_str} | Index {feature} is out of range in {kw}"
                                     )
                                     continue
 
@@ -212,7 +238,7 @@ class LogInput(LogState):
                                     feat_data = data[:, feature]
                                 except IndexError:
                                     self.log_warning(
-                                        f"Index {feature} is out of range in {kw}"
+                                        f"{log_str} | Index {feature} is out of range in {kw}"
                                     )
                                     continue
                             else:
@@ -234,7 +260,7 @@ class LogInput(LogState):
                                         lower_bound, upper_bound = params
                                         if out < lower_bound or out > upper_bound:
                                             self.log_warning(
-                                                f"{func.__qualname__} | {kw} - {feature} | {metric}: {out} out of bounds [{lower_bound}, {upper_bound}]"
+                                                f"{log_str} {kw} - {feature} | {metric}: {out} out of bounds [{lower_bound}, {upper_bound}]"
                                             )
 
                                     else:
@@ -276,10 +302,14 @@ class LogInput(LogState):
                 raise ArgumentNotCallable(
                     "Not a callable. Did you use a non-keyword argument?"
                 )
-            return wraps(func)(partial(wrapper, func))
+            return wraps(func, assigned=WRAPPER_ASSIGNMENTS, updated=WRAPPER_UPDATES)(
+                partial(wrapper, func)
+            )
 
         def wrap_callable(func: Callable) -> Callable:
-            return wraps(func)(partial(wrapper, func))
+            return wraps(func, assigned=WRAPPER_ASSIGNMENTS, updated=WRAPPER_UPDATES)(
+                partial(wrapper, func)
+            )
 
         return wrap_callable
 
@@ -298,7 +328,7 @@ class LogOutput(LogState):
                 List[Union[str, Callable]],
             ]
         ] = None,
-        run_id: Optional[str] = None,
+        verbose: bool = False,
     ) -> Callable:
         """
 
@@ -311,10 +341,12 @@ class LogOutput(LogState):
             >>> def func(X):
             >>>     return X
         """
-        run_id = hash_string(str(datetime.datetime.now()), length=6)
 
         def wrapper(func: Callable, *args, **kwargs):
-            log_str = f"{func.__qualname__} | OUTPUT | "
+            self._find_path_to_func(func=func)
+            log_str = self._select_string_path(
+                verbose=verbose, func=func, state="OUTPUT"
+            )
             output_dict = {}
 
             if is_method(func):
@@ -343,7 +375,7 @@ class LogOutput(LogState):
                             lower_bound, upper_bound = params
                             if out < lower_bound or out > upper_bound:
                                 self.log_warning(
-                                    f"{func.__qualname__} | {metric}: {out} out of bounds [{lower_bound}, {upper_bound}]"
+                                    f"{log_str} | {metric}: {out} is not within thresholds [{lower_bound}, {upper_bound}]"
                                 )
                         else:
                             out = self._calculate_metric(data=result, metric=metric)
@@ -370,9 +402,13 @@ class LogOutput(LogState):
                 raise ArgumentNotCallable(
                     "Not a callable. Did you use a non-keyword argument?"
                 )
-            return wraps(func)(partial(wrapper, func))
+            return wraps(func, assigned=WRAPPER_ASSIGNMENTS, updated=WRAPPER_UPDATES)(
+                partial(wrapper, func)
+            )
 
         def wrap_callable(func: Callable) -> Callable:
-            return wraps(func)(partial(wrapper, func))
+            return wraps(func, assigned=WRAPPER_ASSIGNMENTS, updated=WRAPPER_UPDATES)(
+                partial(wrapper, func)
+            )
 
         return wrap_callable

@@ -5,7 +5,7 @@ from mlog import Logger
 
 @pytest.fixture
 def logger():
-    yield Logger("")
+    yield Logger()
 
 
 @pytest.fixture
