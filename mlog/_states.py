@@ -41,9 +41,10 @@ from ._os import find_path_of_callable
 class LogState(ABC):
     path_to_func: Optional[str] = None
 
-    def __init__(self, _parent, run_id: str) -> None:
+    def __init__(self, _parent, run_id: str, verbose: bool) -> None:
         self._parent = _parent
         self.run_id = run_id
+        self.verbose = verbose
 
         self.log_info = getattr(_parent, "info")
         self.log_warning = getattr(_parent, "warning")
@@ -99,8 +100,13 @@ class LogProfile(LogState):
         *,
         execution_time: bool = False,
         memory_usage: bool = False,
-        verbose: bool = False,
     ) -> Callable:
+        """Logging state to profile a function
+
+        params:
+            execution_time, bool, default=False: Track the execution of a function
+            memory_usage, bool, default=False: Track the total size of inputs
+        """
         start_time = datetime.datetime.now()
 
         def wrapper(func: Callable, *args, **kwargs):
@@ -109,7 +115,7 @@ class LogProfile(LogState):
             profiling_dict = {}
 
             log_str = self._select_string_path(
-                verbose=verbose, func=func, state="PROFILE"
+                verbose=self.verbose, func=func, state="PROFILE"
             )
             if memory_usage is True:
                 total = 0
@@ -156,9 +162,11 @@ class LogInput(LogState):
         func: Optional[Callable] = None,
         *,
         metrics: Optional[Dict[str, Union[Dict, List[Union[str, Callable]]]]] = None,
-        verbose: bool = False,
     ) -> Callable:
-        """
+        """Logging state to track input of a function
+
+        params:
+            metrics, dict or list, default=None: The metrics to calculate on the input
 
         Usages:
             >>> @logger.input.log(metrics={"df": ["mean"]})
@@ -182,7 +190,7 @@ class LogInput(LogState):
             self._find_path_to_func(func=func)
             kwargs_mapping = map_args(func, *args, **kwargs)
             log_str = self._select_string_path(
-                verbose=verbose, func=func, state="INPUT"
+                verbose=self.verbose, func=func, state="INPUT"
             )
 
             if metrics is not None:
@@ -326,9 +334,11 @@ class LogOutput(LogState):
                 List[Union[str, Callable]],
             ]
         ] = None,
-        verbose: bool = False,
     ) -> Callable:
-        """
+        """Logging state to track output of a function
+
+        params:
+            metrics, dict or list, default=None: The metrics to calculate on the output
 
         Usage:
             >>> logger.output.log(metrics={"mean": (0.5, 0.8), "percentile10": None})
@@ -343,7 +353,7 @@ class LogOutput(LogState):
         def wrapper(func: Callable, *args, **kwargs):
             self._find_path_to_func(func=func)
             log_str = self._select_string_path(
-                verbose=verbose, func=func, state="OUTPUT"
+                verbose=self.verbose, func=func, state="OUTPUT"
             )
             output_dict = {}
 

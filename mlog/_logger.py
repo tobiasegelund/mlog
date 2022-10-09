@@ -1,7 +1,7 @@
 import datetime
 from pathlib import Path
 import logging
-from typing import Union, Optional
+from typing import Union, Optional, Literal
 
 from ._os import find_hidden_mlog_dir
 from ._utils import hash_string
@@ -11,18 +11,60 @@ from ._states import LogInput, LogOutput, LogProfile
 class Logger:
     """A high-level extension of the logger class from Python standard logging library.
 
-    On one hand the class holds the same features and settings as the standard library, while on the other
-    it has extended it options to calculate metrics of input and output of functions and methods.
+    The class stores most of the same features as the standard library's logging class,
+    but with an extension of decorator to to calculate metrics on input and output of functions and methods.
 
-    The logging class is focused around machine learning systems, and to monitor any changes in input and output data
-    to catch any data shifts.
+    Its focus is on machine learning systems, in order to log and monitor changes in input and output data
+    of functions to catch data shifts before its too late.
 
     Params:
-
+        filename, [str, Path], default=None: The filepath to store logging output.
+        filemode, str, default='a': Use 'w' to overwrite the file or 'a' to append to the file.
+        format, str, default="%(asctime)s | %(levelname)s | %(message)s": Please check out Python's
+            logging library for more information on formatting.
+        level, logging.LEVEL, default=logging.INFO: Please check out Python's logging library
+            for more information on level.
+        run_id, str, default=None: Optional to choose a run id, if none, a hash value will be
+            used
+        verbose, bool, default=True: Verbose output of logging, including run id and file path to
+            function
 
     Usage:
         >>> from mlog import Logger
         >>> logger = Logger()
+
+        State: Profile
+        >>> @logger.profile.log(execution_time=True, memory_usage=True)
+        >>> def func(df):
+        >>>    pass
+
+        State: Input
+        >>> @logger.input.log(metrics={"df": ["mean"]})
+        >>> def func(df):
+        >>>    pass
+
+        >>> @logger.input.log(metrics={"df": {"feat1": {"mean": (4, 6)}}})
+        >>> def func(df):
+        >>>    pass
+
+        >>> @logger.input.log(metrics={"X": {0: {"mean": (4, 6)}}})
+        >>> def func(df):
+        >>>    pass
+
+        >>> @logger.input.log(metrics={"X": {0: ["mean"]}})
+        >>> def func(df):
+        >>>    pass
+
+        State: Output
+        >>> logger.output.log(metrics={"mean": (0.5, 0.8), "percentile10": None})
+        >>> def func(X):
+        >>>     return X
+
+        >>> logger.output.log(metrics=["mean", "percentile1"])
+        >>> def func(X):
+        >>>     return X
+
+    The decorators can also be combined to track both input, output and profile of a function
     """
 
     # _hidden_dir = find_hidden_mlog_dir()
@@ -31,10 +73,11 @@ class Logger:
         self,
         *,
         filename: Optional[Union[str, Path]] = None,
-        filemode: str = "a",
+        filemode: Literal["a", "w"] = "a",
         format: str = "%(asctime)s | %(levelname)s | %(message)s",
         level=logging.INFO,
         run_id: Optional[str] = None,
+        verbose: bool = True,
     ) -> None:
         logging.basicConfig(
             filename=filename, filemode=filemode, format=format, level=level
@@ -44,9 +87,9 @@ class Logger:
         # Initialize the possible states
         # TODO: Apply logic to each state here. In case a certain connection or file must be written for input logs
         run_id = self._create_run_id(run_id=run_id)
-        self._profile = LogProfile(self, run_id=run_id)
-        self._input = LogInput(self, run_id=run_id)
-        self._output = LogOutput(self, run_id=run_id)
+        self._profile = LogProfile(self, run_id=run_id, verbose=verbose)
+        self._input = LogInput(self, run_id=run_id, verbose=verbose)
+        self._output = LogOutput(self, run_id=run_id, verbose=verbose)
 
     def _create_run_id(self, run_id: Optional[str] = None) -> str:
         if run_id is None:
