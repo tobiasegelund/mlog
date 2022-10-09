@@ -1,14 +1,35 @@
 # mlog
-A library to log and monitor machine learning systems. It's built using the decorator and typestates design patterns to easily apply logging and specified function or methods of interest.
+A library with off the shelf logging and monitoring of machine learning systems. The logging class takes advantage of decorator and typestate design patterns to easily apply logging logic on input and output of functions and methods.
 
-The purpose of the library is to easily control and observe any data shift, as well as monitor I/O, CPU/GPU usage.
+Its focus is on batch predictions of machine learning systems. It logs and monitors any changes in input and output data of functions to catch data shifts as soon as possible, and remove boilerplate logging code in order to achieve level of logging of machine learning pipelines. The library has some predefined metrics such as mean, nans, number of duplicated, number of rows, execution time etc, including self-defined functions is easy to apply.
 
-Remove boilerplate logging code to monitor input and output of a machine learning pipeline.
+The library offers the option to set thresholds to maintain a certain level of stability in the I/O of machine learning systems. In case the value is not within the threshold, a warning will be logged with the exact metric.
 
-Off the shelf logging tool for your own ML models at home. It can easily be extended with database connections if needed
+Currently, the library is only compatible with NumPy arrays, Pandas DataFrames or lists. In the future, the logging will also be compatible with PyTorch Tensors.
 
-## Under construction
+## Installation
+```bash
+```
 
-The logging is focused on batch predictions, ie. the logging is not ideal for real-time predictions.
+## Usage
+```python
+from mlog import Logger
+import pandas as pd
 
-Will be compatible with Pandas DataFrames, Numpy Arrays and PyTorch Tensors
+logger = Logger()
+
+@logger.profile.log(execution_time=True, memory_usage=True)
+@logger.input.log(metrics={"df": {"feat1": ["mean", "size"]}})
+@logger.output.log(metrics=["mean", "size"])
+def test(df: pd.DataFrame) -> pd.Series:
+    # processing df to x
+    return x
+
+
+@logger.profile.log(execution_time=True, memory_usage=True)
+@logger.input.log(metrics={"df": {"feat1": {"mean": (5, 8)}}})
+@logger.output.log(metrics={"mean": (2, 10)})
+def test(df: pd.DataFrame) -> pd.Series:
+    # processing df to x
+    return x
+```
