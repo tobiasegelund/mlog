@@ -23,12 +23,6 @@ class Logger:
     Usage:
         >>> from mlog import Logger
         >>> logger = Logger()
-
-    Typestates: logger.profile.log(), logger.ml.log(), logger.data.log()
-
-    # What to do if we observe the same name twice? Link it based on the script it is found in?
-     - Perhaps include environment variable
-     - Logging folders / files and by levels
     """
 
     # _hidden_dir = find_hidden_mlog_dir()

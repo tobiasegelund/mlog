@@ -1,12 +1,10 @@
 """
 TODO:
     - Focused around pandas dataframe / Pytorch Tensor / Numpy array => Standard lib in ML
-    - Add UUID / Run id to match failures etc if it runs concurrently
-    - Add index => unique id => function / method name
 
     - Validate data types
     - Checking schemas (Correct naming, correct order) => Insert prefined schema (e.g. dataframe feature names)
-    - Syntax errors
+    - Handle syntax errors
 
     - Add mode, standard deviation, variance, frequency
     - Aggregates as sum, count, and
