@@ -41,4 +41,10 @@ def test(df: pd.DataFrame) -> pd.Series:
 def test(df: pd.DataFrame) -> pd.Series:
     # processing df to x
     return x
+
+
+# Standard logging can also be used
+logger.info("This is an info message")
+logger.warning("This is a warning message")
+logger.error("This is an error message")
 ```
