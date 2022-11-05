@@ -1,7 +1,7 @@
 # mlog
 A library with off the shelf logging of machine learning systems to remove any boilerplate code of logging I/O of pipelines. The logging class takes advantage of decorator and typestate design patterns to easily apply logging logic on I/O of functions and methods.
 
-The library offers the option to apply thresholds to maintain a certain level of stability in the I/O. In case the value exceeds the thresholds, a warning will be logged with the exact metric and thresholds. By applying thresholds to the logging it has the option to log and monitor changes in I/O of data to catch any shifts in data. The library has some predefined metrics such as mean, nans, number of duplicates, number of rows, execution time, but it also adds the options to include self-defined functions easily.
+The library offers the option to apply thresholds to maintain a certain level of stability. In case the value exceeds the thresholds, a warning will be logged with the exact exceeding value, so it is easy to catch any shifts in the data distribution. The library has some predefined metrics such as mean, count of nans, count of duplicates, number of rows, execution time etc, but it has the option to use self-defined functions.
 
 Currently, the library is only compatible with NumPy Arrays, Pandas DataFrames and lists. In the future, the logging will also be compatible with PyTorch Tensors.
 
